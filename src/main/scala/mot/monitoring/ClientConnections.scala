@@ -26,34 +26,25 @@ class ClientConnections extends SimpleCommandHandler {
       Col[String]("LAST ERROR", 50, Alignment.Left)) { printer =>
         for (client <- Context.clients.values; connector <- client.connectors.values) {
           val lastError = connector.lastConnectingError.map(_.getMessage).getOrElse("-")
-          connector.currentConnection match {
-            case Some(connection) =>
-              printer(
-                client.name,
-                connector.target.toString,
-                connector.sendingQueue.size,
-                connector.unrespondableSentCounter.get(),
-                connector.respondableSentCounter.get(),
-                connector.responsesReceivedCounter.get(),
-                connector.timeoutsCounter.get(),
-                connection.socket.getLocalSocketAddress.toString,
-                connection.socket.getRemoteSocketAddress.toString,
-                connection.pendingPromises.size,
-                lastError)
+          val (local, remote, pending) = connector.currentConnection match {
+            case Some(conn) =>
+              val s = conn.socket
+              (s.getLocalSocketAddress.toString, s.getRemoteSocketAddress.toString, conn.pendingPromises.size)
             case None =>
-              printer(
-                client.name,
-                connector.target.toString,
-                connector.sendingQueue.size,
-                connector.unrespondableSentCounter.get(),
-                connector.respondableSentCounter.get(),
-                connector.responsesReceivedCounter.get(),
-                connector.timeoutsCounter.get(),
-                "-",
-                "-", 
-                0,
-                lastError)
+              ("-", "-", 0)
           }
+          printer(
+            client.name,
+            connector.target.toString,
+            connector.sendingQueue.size,
+            connector.unrespondableSentCounter.get(),
+            connector.respondableSentCounter.get(),
+            connector.responsesReceivedCounter.get(),
+            connector.timeoutsCounter.get(),
+            local,
+            remote,
+            pending,
+            lastError)
         }
       }
   }
