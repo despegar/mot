@@ -20,16 +20,22 @@ import scala.collection.JavaConversions._
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.ScheduledThreadPoolExecutor
 import java.util.concurrent.ScheduledFuture
-import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.ThreadFactory
 
 class ClientConnection(val connector: ClientConnector, val socket: Socket) extends Logging {
 
   private val readBuffer = new ReadBuffer(socket.getInputStream, connector.client.readerBufferSize)
   private val writeBuffer = new WriteBuffer(socket.getOutputStream, connector.client.writerBufferSize)
 
-  val readerThread = new Thread(readerLoop _, s"client-reader-${connector.client.name}<-${connector.target}")
+  val readerThread = new Thread(readerLoop _, s"mot-client-reader-${connector.client.name}->${connector.target}")
 
-  val promiseExpirator = new ScheduledThreadPoolExecutor(1)
+  val promiseExpirator = {
+    val tf = new ThreadFactory {
+      def newThread(r: Runnable) = 
+        new Thread(r, "mot-client-promise-expiratior-${connector.client.name}->${connector.target}")
+    }
+    new ScheduledThreadPoolExecutor(1, tf)
+  }
 
   val pendingPromises =
     new ConcurrentHashMap[Int /* sequence */ , (ResponsePromise, ScheduledFuture[_] /* expiration task */ )](
