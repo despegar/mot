@@ -20,6 +20,7 @@ import scala.collection.JavaConversions._
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.ScheduledThreadPoolExecutor
 import java.util.concurrent.ScheduledFuture
+import java.util.concurrent.atomic.AtomicInteger
 
 class ClientConnection(val connector: ClientConnector, val socket: Socket) extends Logging {
 
@@ -28,7 +29,7 @@ class ClientConnection(val connector: ClientConnector, val socket: Socket) exten
 
   val readerThread = new Thread(readerLoop _, s"client-reader-${connector.client.name}<-${connector.target}")
 
-  val promisesCleaner = new ScheduledThreadPoolExecutor(1)
+  val promiseExpirator = new ScheduledThreadPoolExecutor(1)
 
   val pendingPromises =
     new ConcurrentHashMap[Int /* sequence */ , (ResponsePromise, ScheduledFuture[_] /* expiration task */ )](
@@ -39,7 +40,7 @@ class ClientConnection(val connector: ClientConnector, val socket: Socket) exten
   val closed = new AtomicBoolean
 
   var maxLength = -1
-  
+
   def startAndBlockWriting() = {
     readerThread.start()
     writerLoop()
@@ -58,6 +59,7 @@ class ClientConnection(val connector: ClientConnector, val socket: Socket) exten
 
   def close() {
     reportError(new ClientClosedException)
+    promiseExpirator.shutdown()
   }
 
   def readerLoop() = {
@@ -107,11 +109,13 @@ class ClientConnection(val connector: ClientConnector, val socket: Socket) exten
           expirationTask.cancel(false /* mayInterruptIfRunning */ )
           val delay = promise.delay()
           if (delay <= 0) {
-            promise.fulfill(Message.fromArrays(response.attributes, body))
+            if (promise.fulfill(Message.fromArrays(response.attributes, body)))
+              connector.responsesReceivedCounter.incrementAndGet()
           } else {
             val delayMs = delay / (1000 * 1000)
             logger.debug(s"Expired response (seq: ${response.requestReference}) arrived: arrived $delayMs ms late.")
-            promise.forget(new ResponseTimeoutException)
+            if (promise.forget(new ResponseTimeoutException))
+              connector.timeoutsCounter.incrementAndGet()
           }
         case None =>
           logger.debug("Unexpected response arrived (probably expired and then collected): " + response)
@@ -130,15 +134,24 @@ class ClientConnection(val connector: ClientConnector, val socket: Socket) exten
       while (!closed.get) {
         Option(connector.sendingQueue.poll(200, TimeUnit.MILLISECONDS)) match {
           case Some((message, optionalPromise)) =>
-            optionalPromise.foreach { promise =>
-              // If message is respondable
-              def forget() = {
-                Option(pendingPromises.remove(msgSequence)).foreach { case (p, _) =>
-                  p.forget(new ResponseTimeoutException)
+            optionalPromise match {
+              case Some(promise) =>
+                // Message is respondable
+                val seq = msgSequence // capture for use inside closure
+                def forget() = {
+                  logger.trace("Expiring pending response, sequence: " + seq)
+                  Option(pendingPromises.remove(seq)).foreach {
+                    case (p, _) =>
+                      if (p.forget(new ResponseTimeoutException))
+                        connector.timeoutsCounter.incrementAndGet()
+                  }
                 }
-              }
-              val expirationTask = promisesCleaner.schedule(forget _, promise.timeoutMs, TimeUnit.MILLISECONDS)
-              pendingPromises.put(msgSequence, (promise, expirationTask))
+                val expirationTask = promiseExpirator.schedule(forget _, promise.timeoutMs, TimeUnit.MILLISECONDS)
+                pendingPromises.put(msgSequence, (promise, expirationTask))
+                connector.respondableSentCounter.incrementAndGet()
+              case None =>
+                // Message is unrespondable
+                connector.unrespondableSentCounter.incrementAndGet()
             }
             val timeout = optionalPromise.map(_.timeoutMs).getOrElse(0)
             val respondable = optionalPromise.isDefined
