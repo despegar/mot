@@ -1,0 +1,21 @@
+#!/usr/bin/python
+import sys, socket
+#import conf
+
+timeout = 10000
+sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+#sock.connect((conf.host, conf.port))
+sock.connect(("localhost", 4001))
+sock.settimeout(timeout)
+
+args = sys.argv[1:]
+sock.sendall(' '.join(args))
+sock.shutdown(socket.SHUT_WR)
+buffersize = 4096
+try:
+	data = sock.recv(buffersize)
+	while data:
+		sys.stdout.write(data)
+		data = sock.recv(buffersize)
+except KeyboardInterrupt:
+	print
