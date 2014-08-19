@@ -24,7 +24,8 @@ class TooLateException(val delay: Long)
 class ResponseAlreadySendException extends Exception("Message has already been responded")
 
 class InvalidServerConnectionException(cause: Throwable)
-  extends Exception("Cannot send response because server the connection was terminated", cause)
+  extends Exception(
+      "Cannot send response because server the connection from which the request came was terminated", cause)
 
 // Common
 

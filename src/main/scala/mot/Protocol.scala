@@ -25,6 +25,7 @@ object Protocol {
   
   val ProtocolVersion = 1.toByte
   val HeartBeatInterval = 5000
+  val HeartBeatIntervalNs = HeartBeatInterval.toLong * 1000 * 1000 
   
   val PublisherNameMaxLength = Byte.MaxValue
   val AttributeNameMaxLength = Byte.MaxValue

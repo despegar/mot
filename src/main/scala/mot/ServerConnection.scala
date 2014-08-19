@@ -5,7 +5,6 @@ import java.net.InetSocketAddress
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.atomic.AtomicReference
 import java.util.concurrent.BlockingQueue
 import mot.message.MessageBase
 import mot.message.Heartbeat
@@ -75,7 +74,6 @@ class ServerConnection(val server: Server, val socket: Socket) extends Logging {
       logger.trace("Sending " + serverHello)
       serverHello.writeToBuffer(writeBuffer)
       while (!finalized.get) {
-        val now = System.nanoTime()
         val outRes = sendingQueue.poll(200, TimeUnit.MILLISECONDS)
         if (outRes != null) {
           val (seq, msg) = outRes
@@ -91,11 +89,12 @@ class ServerConnection(val server: Server, val socket: Socket) extends Logging {
            * The purpose of heart beats is to keep the wire active where there are no messages.
            * This is useful for detecting dropped connections and avoiding read timeouts in the other side.
            */
-          if (now - lastMessage >= Protocol.HeartBeatInterval * 1000 * 1000) {
+          val now = System.nanoTime()
+          if (now - lastMessage >= Protocol.HeartBeatIntervalNs) {
             val heartbeat = Heartbeat()
             logger.trace("Sending " + heartbeat)
             heartbeat.writeToBuffer(writeBuffer)
-            lastMessage = now
+            lastMessage = System.nanoTime()
           }
           // Do not let the buffer contents without flushing too much time
           if (writeBuffer.hasData)
