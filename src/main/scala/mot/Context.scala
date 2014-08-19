@@ -7,6 +7,7 @@ import mot.monitoring.Commands
 object Context {
 
   val clients = new ConcurrentHashMap[String, Client]
+  val servers = new ConcurrentHashMap[String, Server]
   
   new Commands().start()
   

@@ -15,7 +15,7 @@ class ClientConnections extends SimpleCommandHandler {
     Tabler.draw(
       Col[String]("CLIENT", 15, Alignment.Left),
       Col[String]("TARGET", 21, Alignment.Left),
-      Col[Int]("QUEUE", 7, Alignment.Right),
+      Col[Int]("SND-QUEUE", 9, Alignment.Right),
       Col[Long]("UNRSP-SENT", 11, Alignment.Right),
       Col[Long]("RESP-SENT", 11, Alignment.Right),
       Col[Long]("RES-RCVD", 11, Alignment.Right),

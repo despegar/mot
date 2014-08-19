@@ -75,6 +75,8 @@ class Commands extends Logging with MultiCommandHandler {
   val name = "cnd"
 
   val subcommands = Seq(
-    new ClientConnections)
+    new ClientConnections, 
+    new Servers,
+    new ServerConnections)
 
 }
