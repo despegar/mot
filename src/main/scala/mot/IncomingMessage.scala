@@ -7,4 +7,11 @@ case class IncomingMessage(
   
   def isRespondible = responder.isDefined
   
+  def isOnTime(now: Long) = {
+    responder match {
+      case Some(r) => r.isOnTime(now)
+      case None => true
+    }
+  }
+  
 }

@@ -36,6 +36,7 @@ class ServerConnection(val server: Server, val socket: Socket) extends Logging {
   val writeBuffer = new WriteBuffer(socket.getOutputStream, server.writerBufferSize)
 
   @volatile var sequence = 0
+  var lastMessage = 0L
 
   var clientName: String = _
 
@@ -44,7 +45,7 @@ class ServerConnection(val server: Server, val socket: Socket) extends Logging {
     readerThread.start()
     writerThread.start()
   }
-  
+
   def finalize(e: Throwable) {
     if (finalized.compareAndSet(false, true)) {
       handler.reportError(e)
@@ -55,10 +56,10 @@ class ServerConnection(val server: Server, val socket: Socket) extends Logging {
 
   def sendResponse(responder: Responder, response: Message) = {
     val now = System.nanoTime()
-    val maximum = responder.receptionTime + responder.timeout * 1000 * 1000
-    val delay = now - maximum
-    if (delay > 0)
+    if (!responder.isOnTime(now)) {
+      val delay = now - responder.expiration
       throw new TooLateException(delay)
+    }
     sendingQueue.put((responder.sequence, response))
   }
 
@@ -73,21 +74,23 @@ class ServerConnection(val server: Server, val socket: Socket) extends Logging {
       val serverHello = ServerHello(protocolVersion = 1, maxLength = Short.MaxValue)
       logger.trace("Sending " + serverHello)
       serverHello.writeToBuffer(writeBuffer)
-      var lastMessage = 0L
       while (!finalized.get) {
         val now = System.nanoTime()
         val outRes = sendingQueue.poll(200, TimeUnit.MILLISECONDS)
         if (outRes != null) {
           val (seq, msg) = outRes
-          val response = Response(seq, msg.attributes, msg.bodyParts.map(_.array))
-          logger.trace("Sending " + response)
-          response.writeToBuffer(writeBuffer)
-          lastMessage = now
+          /*
+           * There was something in the queue.
+           * Note that it is not necessary to check for timeouts, as it was already checked when the response
+           * was enqueued, and there is no flow control in responses, everything is delivered as is arrives,
+           * so messages do not spend too much time in the queue.
+           */
+          sendMessage(seq, msg)
         } else {
           /*
-         * The purpose of heart beats is to keep the wire active where there are no messages.
-         * This is useful for detecting dropped connections and avoiding read timeouts in the other side.
-         */
+           * The purpose of heart beats is to keep the wire active where there are no messages.
+           * This is useful for detecting dropped connections and avoiding read timeouts in the other side.
+           */
           if (now - lastMessage >= Protocol.HeartBeatInterval * 1000 * 1000) {
             val heartbeat = Heartbeat()
             logger.trace("Sending " + heartbeat)
@@ -106,16 +109,31 @@ class ServerConnection(val server: Server, val socket: Socket) extends Logging {
     }
   }
 
+  def sendMessage(sequence: Int, msg: Message) = {
+    val response = Response(sequence, msg.attributes, msg.bodyParts.map(_.array))
+    logger.trace("Sending " + response)
+    response.writeToBuffer(writeBuffer)
+    lastMessage = System.nanoTime()
+  }
+
   def readerLoop() = {
     try {
       ReaderUtil.prepareSocket(socket)
       val message = MessageBase.readFromBuffer(readBuffer, server.requestMaxLength)
       logger.trace("Read " + message)
-      processHello(message)
+      message match {
+        case clientHello: ClientHello => processHello(clientHello)
+        case any => throw new BadDataException("Unexpected message type: " + any.getClass.getName)
+      }
       while (!finalized.get) {
         val message = MessageBase.readFromBuffer(readBuffer, server.requestMaxLength)
+        val now = System.nanoTime()
         logger.trace("Read " + message)
-        processMessage(message)
+        message match {
+          case m: Heartbeat => // pass
+          case messageFrame: MessageFrame => processMessage(now, messageFrame)
+          case any => throw new BadDataException("Unexpected message type: " + any.getClass.getName)
+        }
       }
     } catch {
       case e: UncompatibleProtocolVersion =>
@@ -133,31 +151,22 @@ class ServerConnection(val server: Server, val socket: Socket) extends Logging {
     }
   }
 
-  def processHello(message: MessageBase) = message match {
-    case helloMessage: ClientHello =>
-      // TODO: Ver de tolerar versiones nuevas
-      if (helloMessage.protocolVersion > Protocol.ProtocolVersion)
-        throw new UncompatibleProtocolVersion(s"read ${helloMessage.protocolVersion}, must be ${Protocol.ProtocolVersion}")
-      clientName = helloMessage.sender
-    case any =>
-      throw new BadDataException("Unexpected message type: " + any.getClass.getName)
+  def processHello(helloMessage: ClientHello) = {
+    // TODO: Ver de tolerar versiones nuevas
+    if (helloMessage.protocolVersion > Protocol.ProtocolVersion)
+      throw new UncompatibleProtocolVersion(s"read ${helloMessage.protocolVersion}, must be ${Protocol.ProtocolVersion}")
+    clientName = helloMessage.sender
   }
 
-  def processMessage(message: MessageBase) = message match {
-    case m: Heartbeat =>
-    // pass
-    case m: MessageFrame =>
-      val body = m.bodyParts.head // Incoming messages only have one part
-      val messageRef = if (m.respondable) 
-        Some(new Responder(handler, sequence, System.nanoTime(), m.timeout))
-      else
-        None
-      val message = Message.fromArrays(m.attributes, body)
-      val incomingMessage = IncomingMessage(messageRef, from, clientName, message)
-      sequence += 1
-      offer(server.receivingQueue, incomingMessage, finalized)
-    case any =>
-      throw new BadDataException("Unexpected message type: " + any.getClass.getName)
+  def processMessage(now: Long, message: MessageFrame) = {
+    val body = message.bodyParts.head // Incoming messages only have one part
+    val responder = if (message.respondable)
+      Some(new Responder(handler, sequence, now, message.timeout))
+    else
+      None
+    val incomingMessage = IncomingMessage(responder, from, clientName, Message.fromArrays(message.attributes, body))
+    sequence += 1
+    offer(server.receivingQueue, incomingMessage, finalized)
   }
 
   def offer[A](queue: BlockingQueue[A], element: A, subscriberClosed: AtomicBoolean) {
