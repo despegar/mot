@@ -4,7 +4,7 @@ import mot.util.Tabler
 import mot.Context
 import collection.JavaConversions._
 
-class ServerConnections extends SimpleCommandHandler {
+class ServerConnections(context: Context) extends SimpleCommandHandler {
 
   val name = "server-conn"
 
@@ -17,7 +17,7 @@ class ServerConnections extends SimpleCommandHandler {
       Col[String]("CLIENT", 15, Alignment.Left),
       Col[String]("REMOTE-ADDR", 25, Alignment.Left),
       Col[Int]("SND-QUEUE", 9, Alignment.Right)) { printer =>
-        for (server <- Context.servers.values; conn <- server.connectors.values) {
+        for (server <- context.servers.values; conn <- server.connectors.values) {
           printer(
             server.name,
             conn.clientName,

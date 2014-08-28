@@ -21,6 +21,7 @@ import java.util.concurrent.TimeUnit
  * @param optimistic whether to accept requests when the underlying is known to be faulty
  */
 class Client(
+  val context: Context,
   val name: String,
   val responseMaxLength: Int = 100000,
   val queueSize: Int = 1000,
@@ -37,7 +38,7 @@ class Client(
 
   checkName()
 
-  Context.clients.put(name, this)
+  context.clients.put(name, this)
   
   private def checkName() {
     if (!Util.isAscii(name))
@@ -126,7 +127,7 @@ class Client(
 
   def close() = {
     closed = true
-    Context.clients.remove(name)
+    context.clients.remove(name)
     connectors.values.foreach(_.close())
   }
   

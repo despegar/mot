@@ -4,7 +4,7 @@ import mot.util.Tabler
 import mot.Context
 import collection.JavaConversions._
 
-class Servers extends SimpleCommandHandler {
+class Servers(context: Context) extends SimpleCommandHandler {
 
   val name = "servers"
 
@@ -18,7 +18,7 @@ class Servers extends SimpleCommandHandler {
       Col[Int]("BIND-PORT", 9, Alignment.Right),
       Col[Int]("CONNECTIONS", 11, Alignment.Right),
       Col[Int]("RCV-QUEUE", 9, Alignment.Right)) { printer =>
-        for (server <- Context.servers.values) {
+        for (server <- context.servers.values) {
           printer(
             server.name,
             server.bindAddress.toString,

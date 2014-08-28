@@ -29,6 +29,7 @@ import java.net.InetAddress
  * @param uncaughtErrorHandler what to do if an uncaught exception terminates a thread
  */
 class Server(
+  val context: Context,
   val name: String,
   val bindPort: Int,
   val bindAddress: InetAddress = InetAddress.getByName("0.0.0.0"),
@@ -50,7 +51,7 @@ class Server(
 
   @volatile private var closed = false
 
-  Context.servers.put(name, this)
+  context.servers.put(name, this)
   
   acceptThread.start()
 
@@ -92,7 +93,7 @@ class Server(
     closeSocket(serverSocket)
     acceptThread.join()
     connectors.values.foreach(_.close())
-    Context.servers.remove(name)
+    context.servers.remove(name)
   }
 
 }

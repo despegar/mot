@@ -9,13 +9,14 @@ import scala.util.control.NonFatal
 import java.net.SocketException
 import java.io.PrintStream
 import java.net.Socket
+import mot.Context
 
-class Commands extends Logging with MultiCommandHandler {
+class Commands(context: Context, monitoringPort: Int) extends Logging with MultiCommandHandler {
 
   val serverSocket = new ServerSocket()
 
   def start() = {
-    serverSocket.bind(new InetSocketAddress(4001))
+    serverSocket.bind(new InetSocketAddress(monitoringPort))
     new Thread(doIt _, "mot-commands-acceptor").start()
   }
 
@@ -67,8 +68,8 @@ class Commands extends Logging with MultiCommandHandler {
   val name = "cnd"
 
   val subcommands = Seq(
-    new ClientConnections,
-    new Servers,
-    new ServerConnections)
+    new ClientConnections(context),
+    new Servers(context),
+    new ServerConnections(context))
 
 }

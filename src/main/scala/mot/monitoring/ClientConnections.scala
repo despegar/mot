@@ -4,7 +4,7 @@ import mot.util.Tabler
 import mot.Context
 import collection.JavaConversions._
 
-class ClientConnections extends SimpleCommandHandler {
+class ClientConnections(context: Context) extends SimpleCommandHandler {
 
   val name = "conn-client"
 
@@ -24,7 +24,7 @@ class ClientConnections extends SimpleCommandHandler {
       Col[String]("REMOTE-ADDR", 26, Alignment.Left),
       Col[Int]("PENDING", 7, Alignment.Right),
       Col[String]("LAST ERROR", 50, Alignment.Left)) { printer =>
-        for (client <- Context.clients.values; connector <- client.connectors.values) {
+        for (client <- context.clients.values; connector <- client.connectors.values) {
           val lastError = connector.lastConnectingError.map(_.getMessage).getOrElse("-")
           val (local, remote, pending) = connector.currentConnection match {
             case Some(conn) =>
