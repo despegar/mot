@@ -28,7 +28,6 @@ class Client(
   val readerBufferSize: Int = 10000,
   val writerBufferSize: Int = 2000,
   val connectTimeout: Int = 3000,
-  val uncaughtErrorHandler: UncaughtErrorHandler = LoggingErrorHandler,
   val pessimistic: Boolean = false) extends Logging {
 
   // TODO: GC unused connectors

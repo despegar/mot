@@ -37,8 +37,7 @@ class Server(
   val receivingQueueSize: Int = 1000,
   val sendingQueueSize: Int = 5000,
   val readerBufferSize: Int = 10000,
-  val writerBufferSize: Int = 2000,
-  val uncaughtErrorHandler: UncaughtErrorHandler = LoggingErrorHandler) extends Logging {
+  val writerBufferSize: Int = 2000) extends Logging {
 
   val serverSocket = new ServerSocket
   serverSocket.bind(new InetSocketAddress(bindAddress, bindPort))
@@ -63,7 +62,7 @@ class Server(
         conn.start()
       }
     } catch {
-      case NonFatal(e) => uncaughtErrorHandler.handle(e)
+      case NonFatal(e) => context.uncaughtErrorHandler.handle(e)
     }
   }
 

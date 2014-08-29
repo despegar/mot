@@ -59,7 +59,7 @@ class ClientConnector(val client: Client, val target: Target) extends Logging {
         socket = connectSocket()
       }
     } catch {
-      case NonFatal(e) => client.uncaughtErrorHandler.handle(e)
+      case NonFatal(e) => client.context.uncaughtErrorHandler.handle(e)
     }
     logger.trace("Client connector finished")
   }
