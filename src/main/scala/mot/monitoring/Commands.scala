@@ -63,13 +63,14 @@ class Commands(context: Context, monitoringPort: Int) extends Logging with Multi
     }
   }
 
-  val helpLine = "Conductor command-line interface."
+  val helpLine = "Mot command-line interface."
 
   val name = "cnd"
 
   val subcommands = Seq(
     new ClientConnections(context),
     new Servers(context),
-    new ServerConnections(context))
+    new ServerConnections(context),
+    new Clients(context))
 
 }
