@@ -68,9 +68,10 @@ class Commands(context: Context, monitoringPort: Int) extends Logging with Multi
   val name = "cnd"
 
   val subcommands = Seq(
-    new ClientConnections(context),
+    new Connectors(context),
     new Servers(context),
     new ServerConnections(context),
-    new Clients(context))
+    new Clients(context),
+    new Connector(context))
 
 }

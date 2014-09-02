@@ -4,24 +4,20 @@ import mot.util.Tabler
 import mot.Context
 import collection.JavaConversions._
 
-class ClientConnections(context: Context) extends SimpleCommandHandler {
+class Connectors(context: Context) extends SimpleCommandHandler {
 
-  val name = "conn-client"
+  val name = "connectors"
 
-  val helpLine = "Print information about client connections"
+  val helpLine = "Print information about client connectors"
 
   def simpleHandle(processedCommands: Seq[String], commands: Seq[String]) = {
     import Tabler._
     Tabler.draw(
-      Col[String]("CLIENT", 15, Alignment.Left),
+      Col[String]("CLIENT", 13, Alignment.Left),
       Col[String]("TARGET", 21, Alignment.Left),
       Col[Int]("SND-QUEUE", 9, Alignment.Right),
-      Col[Long]("UNRSP-SENT", 11, Alignment.Right),
-      Col[Long]("RESP-SENT", 11, Alignment.Right),
-      Col[Long]("RES-RCVD", 11, Alignment.Right),
-      Col[Long]("TIMEOUTS", 11, Alignment.Right),
-      Col[String]("LOCAL-ADDR", 26, Alignment.Left),
-      Col[String]("REMOTE-ADDR", 26, Alignment.Left),
+      Col[String]("LOCAL-ADDR", 30, Alignment.Left),
+      Col[String]("REMOTE-ADDR", 30, Alignment.Left),
       Col[Int]("PENDING", 7, Alignment.Right),
       Col[String]("LAST ERROR", 50, Alignment.Left)) { printer =>
         for (client <- context.clients.values; connector <- client.connectors.values) {
@@ -37,10 +33,6 @@ class ClientConnections(context: Context) extends SimpleCommandHandler {
             client.name,
             connector.target.toString,
             connector.sendingQueue.size,
-            connector.unrespondableSentCounter.get(),
-            connector.respondableSentCounter.get(),
-            connector.responsesReceivedCounter.get(),
-            connector.timeoutsCounter.get(),
             local,
             remote,
             pending,

@@ -30,7 +30,7 @@ object Tabler {
   private val LongClass = classOf[Long]
   private val BooleanClass = classOf[Boolean]
 
-  private def formatLetter(clazz: Class[_]) = clazz match {
+  def formatLetter(clazz: Class[_]) = clazz match {
     case StringClass | BooleanClass => "s"
     case FloatClass | DoubleClass => "f"
     case IntClass | LongClass => "d"
