@@ -20,7 +20,7 @@ class ClientConnector(val client: Client, val target: Target) extends Logging {
 
   val sendingQueue = new LinkedBlockingQueue[(Message, Option[ResponsePromise])](client.queueSize)
 
-  val thread = new Thread(writeLoop _, s"mor-client-connector-${client.name}->$target")
+  val thread = new Thread(writeLoop _, s"mot-client-connector-${client.name}->$target")
   val closed = new AtomicBoolean
 
   val unrespondableSentCounter = new AtomicLong 

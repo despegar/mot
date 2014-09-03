@@ -70,7 +70,7 @@ class ServerConnection(val server: Server, val socket: Socket) extends Logging {
 
   def writerLoop() = {
     try {
-      val serverHello = ServerHello(protocolVersion = 1, maxLength = Short.MaxValue)
+      val serverHello = ServerHello(protocolVersion = 1, server.name, maxLength = Short.MaxValue)
       logger.trace("Sending " + serverHello)
       serverHello.writeToBuffer(writeBuffer)
       while (!finalized.get) {

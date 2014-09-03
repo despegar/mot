@@ -18,16 +18,22 @@ class Connectors(context: Context) extends SimpleCommandHandler {
       Col[Int]("SND-QUEUE", 9, Alignment.Right),
       Col[String]("LOCAL-ADDR", 30, Alignment.Left),
       Col[String]("REMOTE-ADDR", 30, Alignment.Left),
+      Col[String]("SERVER", 13, Alignment.Left),
+      Col[Int]("MAX-LEN", 9, Alignment.Right),
       Col[Int]("PENDING", 7, Alignment.Right),
-      Col[String]("LAST ERROR", 50, Alignment.Left)) { printer =>
+      Col[String]("LAST ERROR", 20, Alignment.Left)) { printer =>
         for (client <- context.clients.values; connector <- client.connectors.values) {
           val lastError = connector.lastConnectingError.map(_.getMessage).getOrElse("-")
-          val (local, remote, pending) = connector.currentConnection match {
+          val (local, remote, serverName, maxLength, pending) = connector.currentConnection match {
             case Some(conn) =>
-              val s = conn.socket
-              (s.getLocalSocketAddress.toString, s.getRemoteSocketAddress.toString, conn.pendingPromises.size)
+              (
+                conn.socket.getLocalSocketAddress.toString,
+                conn.socket.getRemoteSocketAddress.toString,
+                Option(conn.serverName).getOrElse("-"),
+                conn.maxLength,
+                conn.pendingPromises.size)
             case None =>
-              ("-", "-", 0)
+              ("-", "-", "-", -1, 0)
           }
           printer(
             client.name,
@@ -35,6 +41,8 @@ class Connectors(context: Context) extends SimpleCommandHandler {
             connector.sendingQueue.size,
             local,
             remote,
+            serverName,
+            maxLength,
             pending,
             lastError)
         }

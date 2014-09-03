@@ -45,7 +45,9 @@ class ClientConnection(val connector: ClientConnector, val socket: Socket) exten
 
   val closed = new AtomicBoolean
 
-  var maxLength = -1
+  // Need to be volatile as they are read by monitoring threads
+  @volatile var maxLength = -1
+  @volatile var serverName: String = _
 
   var lastMessage = 0L
   var msgSequence = 0
@@ -111,6 +113,7 @@ class ClientConnection(val connector: ClientConnector, val socket: Socket) exten
     if (serverHello.protocolVersion > Protocol.ProtocolVersion)
       throw new UncompatibleProtocolVersion(s"read ${serverHello.protocolVersion}, must be ${Protocol.ProtocolVersion}")
     maxLength = serverHello.maxLength
+    serverName = serverHello.name
   }
 
   def processMessage(now: Long, response: Response) = {
