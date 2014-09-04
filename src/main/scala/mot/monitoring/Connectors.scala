@@ -14,10 +14,10 @@ class Connectors(context: Context) extends SimpleCommandHandler {
     import Tabler._
     Tabler.draw(
       Col[String]("CLIENT", 13, Alignment.Left),
-      Col[String]("TARGET", 21, Alignment.Left),
+      Col[String]("TARGET", 25, Alignment.Left),
       Col[Int]("SND-QUEUE", 9, Alignment.Right),
-      Col[String]("LOCAL-ADDR", 30, Alignment.Left),
-      Col[String]("REMOTE-ADDR", 30, Alignment.Left),
+      Col[String]("LOCAL-ADDR", 25, Alignment.Left),
+      Col[String]("REMOTE-ADDR", 25, Alignment.Left),
       Col[String]("SERVER", 13, Alignment.Left),
       Col[Int]("MAX-LEN", 9, Alignment.Right),
       Col[Int]("PENDING", 7, Alignment.Right),
@@ -27,8 +27,8 @@ class Connectors(context: Context) extends SimpleCommandHandler {
           val (local, remote, serverName, maxLength, pending) = connector.currentConnection match {
             case Some(conn) =>
               (
-                conn.socket.getLocalSocketAddress.toString,
-                conn.socket.getRemoteSocketAddress.toString,
+                conn.socket.getLocalAddress.getHostAddress + ":" + conn.socket.getLocalPort,
+                conn.socket.getInetAddress.getHostAddress + ":" + conn.socket.getPort,
                 Option(conn.serverName).getOrElse("-"),
                 conn.maxLength,
                 conn.pendingPromises.size)
