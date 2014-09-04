@@ -19,6 +19,7 @@ import mot.message.ClientHello
 import mot.message.ServerHello
 import mot.message.Response
 import Util.FunctionToRunnable
+import java.util.concurrent.atomic.AtomicLong
 
 class ServerConnection(val server: Server, val socket: Socket) extends Logging {
 
@@ -39,8 +40,12 @@ class ServerConnection(val server: Server, val socket: Socket) extends Logging {
 
   var clientName: String = _
 
+  val receivedRespondable = new AtomicLong
+  val receivedUnrespondable = new AtomicLong
+  val tooLateResponses = new AtomicLong
+  
   def start() {
-    server.connectors.put(from, this)
+    server.connections.put(Target(socket.getInetAddress.getHostAddress, socket.getPort), this)
     readerThread.start()
     writerThread.start()
   }
@@ -49,13 +54,14 @@ class ServerConnection(val server: Server, val socket: Socket) extends Logging {
     if (finalized.compareAndSet(false, true)) {
       handler.reportError(e)
       Util.closeSocket(socket)
-      server.connectors.remove(from)
+      server.connections.remove(from)
     }
   }
 
   def sendResponse(responder: Responder, response: Message) = {
     val now = System.nanoTime()
     if (!responder.isOnTime(now)) {
+      tooLateResponses.incrementAndGet()
       val delay = now - responder.expiration
       throw new TooLateException(delay)
     }
@@ -159,10 +165,13 @@ class ServerConnection(val server: Server, val socket: Socket) extends Logging {
 
   def processMessage(now: Long, message: MessageFrame) = {
     val body = message.bodyParts.head // Incoming messages only have one part
-    val responder = if (message.respondable)
+    val responder = if (message.respondable) {
+      receivedRespondable.incrementAndGet()
       Some(new Responder(handler, sequence, now, message.timeout))
-    else
+    } else {
+      receivedUnrespondable.incrementAndGet()
       None
+    }
     val incomingMessage = IncomingMessage(responder, from, clientName, Message.fromArrays(message.attributes, body))
     sequence += 1
     offer(server.receivingQueue, incomingMessage, finalized)

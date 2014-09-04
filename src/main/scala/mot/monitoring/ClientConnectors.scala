@@ -4,9 +4,9 @@ import mot.util.Tabler
 import mot.Context
 import collection.JavaConversions._
 
-class Connectors(context: Context) extends SimpleCommandHandler {
+class ClientConnectors(context: Context) extends SimpleCommandHandler {
 
-  val name = "connectors"
+  val name = "client-connectors"
 
   val helpLine = "Print information about client connectors"
 

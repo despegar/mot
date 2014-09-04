@@ -44,7 +44,7 @@ class Server(
 
   private[mot] val receivingQueue = new LinkedBlockingQueue[IncomingMessage](receivingQueueSize)
 
-  private[mot] val connectors = new ConcurrentHashMap[InetSocketAddress, ServerConnection]
+  private[mot] val connections = new ConcurrentHashMap[Target, ServerConnection]
 
   val acceptThread = new Thread(acceptLoop _, s"$bindAddress-acceptor")
 
@@ -91,7 +91,7 @@ class Server(
     closed = true
     closeSocket(serverSocket)
     acceptThread.join()
-    connectors.values.foreach(_.close())
+    connections.values.foreach(_.close())
     context.servers.remove(name)
   }
 

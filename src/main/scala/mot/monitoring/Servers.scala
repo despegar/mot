@@ -34,7 +34,7 @@ class Servers(context: Context) extends SimpleCommandHandler {
             server.sendingQueueSize,
             server.readerBufferSize,
             server.writerBufferSize,
-            server.connectors.size)
+            server.connections.size)
         }
       }
   }

@@ -6,7 +6,7 @@ import collection.JavaConversions._
 
 class ServerConnections(context: Context) extends SimpleCommandHandler {
 
-  val name = "server-conn"
+  val name = "server-connections"
 
   val helpLine = "Print information about server connections"
 
@@ -17,7 +17,7 @@ class ServerConnections(context: Context) extends SimpleCommandHandler {
       Col[String]("CLIENT", 15, Alignment.Left),
       Col[String]("REMOTE-ADDR", 25, Alignment.Left),
       Col[Int]("SND-QUEUE", 9, Alignment.Right)) { printer =>
-        for (server <- context.servers.values; conn <- server.connectors.values) {
+        for (server <- context.servers.values; conn <- server.connections.values) {
           printer(
             server.name,
             conn.clientName,

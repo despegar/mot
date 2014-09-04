@@ -5,11 +5,11 @@ import mot.util.Tabler
 import mot.Context
 import mot.Target
 
-class Connector(context: Context) extends MultiCommandHandler {
+class ClientConnector(context: Context) extends MultiCommandHandler {
 
   val subcommands = Seq(Live, Totals)
 
-  val name = "connector"
+  val name = "client-connector"
 
   val helpLine = "Show connector statistics."
 
@@ -72,19 +72,6 @@ class Connector(context: Context) extends MultiCommandHandler {
     }
   }
 
-  def targetFromString(str: String) = {
-    val parts = str.split(":").toSeq
-    if (parts.size != 2)
-      throw new IllegalArgumentException("Cannot parse target: " + str)
-    val Seq(host, portStr) = parts
-    val port = try {
-      portStr.toInt
-    } catch {
-      case e: NumberFormatException => throw new IllegalArgumentException("Port is not a number: " + portStr)
-    }
-    Target(host, port)
-  }
-
   def getConnector(commands: Seq[String]) = {
     if (commands.size < 2)
       throw new CommandException("Must specify client and target")
@@ -92,7 +79,7 @@ class Connector(context: Context) extends MultiCommandHandler {
     val client = Option(context.clients.get(clientName)).getOrElse {
       throw new CommandException("Unknown client: " + clientName)
     }
-    val target = targetFromString(targetName)
+    val target = Target.fromString(targetName)
     Option(client.connectors.get(target)).getOrElse(throw new CommandException("Unknown target: " + targetName))
   }
 

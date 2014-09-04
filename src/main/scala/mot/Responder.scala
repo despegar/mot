@@ -3,6 +3,12 @@ package mot
 class Responder(val connection: ServerConnectionHandler, val sequence: Int, val receptionTime: Long, val timeoutMs: Int) {
 
   val timeoutNs = timeoutMs.toLong * 1000 * 1000
+  
+  /*
+   * Expiration time is calculated based on time of reception, not actual sending time. This is in order to avoid any time
+   * synchronization issue between client and server, at the expense of having a small window for sending expired responses (that
+   * should be discarded by the client anyway). 
+   */ 
   val expiration = receptionTime + timeoutNs
 
   var responseSent = false
