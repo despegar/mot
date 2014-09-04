@@ -63,12 +63,12 @@ class ClientConnector(context: Context) extends MultiCommandHandler {
         case e: CommandException => return e.getMessage
       }
       "" +
-        f"${"Sending queue size:"}%-35s ${connector.sendingQueue.size}%11d\n" +
-        f"${"Pending responses:"}%-35s ${connector.currentConnection.map(_.pendingPromises.size).getOrElse(0)}%11d\n" +
-        f"${"Total unrespondable messages sent:"}%-35s ${connector.unrespondableSentCounter.get}%11d\n" +
-        f"${"Total respondable messages sent:"}%-35s ${connector.respondableSentCounter.get}%11d\n" +
-        f"${"Total responses received:"}%-35s ${connector.responsesReceivedCounter.get}%11d\n" +
-        f"${"Total timed out messages:"}%-35s ${connector.timeoutsCounter.get}%11d\n"
+        f"Sending queue size:                ${connector.sendingQueue.size}%11d\n" +
+        f"Pending responses:                 ${connector.currentConnection.map(_.pendingPromises.size).getOrElse(0)}%11d\n" +
+        f"Total unrespondable messages sent: ${connector.unrespondableSentCounter.get}%11d\n" +
+        f"Total respondable messages sent:   ${connector.respondableSentCounter.get}%11d\n" +
+        f"Total responses received:          ${connector.responsesReceivedCounter.get}%11d\n" +
+        f"Total timed out messages:          ${connector.timeoutsCounter.get}%11d\n"
     }
   }
 
