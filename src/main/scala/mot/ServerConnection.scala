@@ -40,8 +40,8 @@ class ServerConnection(val server: Server, val socket: Socket) extends Logging {
 
   var clientName: String = _
 
-  val receivedRespondable = new AtomicLong
-  val receivedUnrespondable = new AtomicLong
+  @volatile var receivedRespondable = 0L
+  @volatile var receivedUnrespondable = 0L
   val tooLateResponses = new AtomicLong
   
   def start() {
@@ -166,10 +166,10 @@ class ServerConnection(val server: Server, val socket: Socket) extends Logging {
   def processMessage(now: Long, message: MessageFrame) = {
     val body = message.bodyParts.head // Incoming messages only have one part
     val responder = if (message.respondable) {
-      receivedRespondable.incrementAndGet()
+      receivedRespondable += 1
       Some(new Responder(handler, sequence, now, message.timeout))
     } else {
-      receivedUnrespondable.incrementAndGet()
+      receivedUnrespondable += 1
       None
     }
     val incomingMessage = IncomingMessage(responder, from, clientName, Message.fromArrays(message.attributes, body))

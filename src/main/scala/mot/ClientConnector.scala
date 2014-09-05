@@ -23,9 +23,9 @@ class ClientConnector(val client: Client, val target: Target) extends Logging {
   val thread = new Thread(writeLoop _, s"mot-client-connector-${client.name}->$target")
   val closed = new AtomicBoolean
 
-  val unrespondableSentCounter = new AtomicLong 
-  val respondableSentCounter = new AtomicLong 
-  val responsesReceivedCounter = new AtomicLong 
+  @volatile var unrespondableSentCounter = 0L 
+  @volatile var respondableSentCounter = 0L
+  @volatile var responsesReceivedCounter = 0L
   val timeoutsCounter = new AtomicLong 
   
   @volatile var currentConnection: Option[ClientConnection] = None

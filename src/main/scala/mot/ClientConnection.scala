@@ -123,7 +123,7 @@ class ClientConnection(val connector: ClientConnector, val socket: Socket) exten
         expirationTask.cancel(false /* mayInterruptIfRunning */ )
         if (!promise.isExpired(now)) {
           promise.fulfill(Message.fromArrays(response.attributes, body))
-          connector.responsesReceivedCounter.incrementAndGet()
+          connector.responsesReceivedCounter += 1
         } else {
           logger.trace(s"Expired response (seq: ${response.requestReference}) arrived.")
           promise.forget(new ResponseTimeoutException)
@@ -187,7 +187,7 @@ class ClientConnection(val connector: ClientConnector, val socket: Socket) exten
         }
         val expirationTask = promiseExpirator.schedule(forget _, promise.timeoutMs, TimeUnit.MILLISECONDS)
         pendingPromises.put(msgSequence, (promise, expirationTask))
-        connector.respondableSentCounter.incrementAndGet()
+        connector.respondableSentCounter += 1
         doSendMessage(MessageFrame(true, promise.timeoutMs, message.attributes, message.bodyParts.map(_.array)))
       case Some(promise) =>
         // already expired, do not send anything
@@ -195,7 +195,7 @@ class ClientConnection(val connector: ClientConnector, val socket: Socket) exten
         connector.timeoutsCounter.incrementAndGet()
       case None =>
         // Message is unrespondable
-        connector.unrespondableSentCounter.incrementAndGet()
+        connector.unrespondableSentCounter += 1
         doSendMessage(MessageFrame(false, 0, message.attributes, message.bodyParts.map(_.array)))
     }
   }

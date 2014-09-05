@@ -34,9 +34,9 @@ class ServerConnection(context: Context) extends MultiCommandHandler {
         Col[Long]("RCV-UNRESP", 10, Alignment.Right),
         Col[Long]("TOO-LATE", 10, Alignment.Right)
         ) { printer =>
-          val respondable = new Differ(connector.receivedRespondable)
-          val unrespondable = new Differ(connector.receivedUnrespondable)
-          val tooLate = new Differ(connector.tooLateResponses)
+          val respondable = Differ.fromVolatile(connector.receivedRespondable _)
+          val unrespondable = Differ.fromVolatile(connector.receivedUnrespondable _)
+          val tooLate = Differ.fromAtomic(connector.tooLateResponses)
           while (true) {
             Thread.sleep(interval)
             printer(
@@ -60,8 +60,8 @@ class ServerConnection(context: Context) extends MultiCommandHandler {
       }
       "" +
         f"Sending queue size:           ${connector.sendingQueue.size}%11d\n" +
-        f"Received respondable:         ${connector.receivedRespondable.get}%11d\n" +
-        f"Received unrespondable:       ${connector.receivedUnrespondable.get}%11d\n" +
+        f"Received respondable:         ${connector.receivedRespondable}%11d\n" +
+        f"Received unrespondable:       ${connector.receivedUnrespondable}%11d\n" +
         f"Responses producted too late: ${connector.tooLateResponses.get}%11d\n"
     }
   }

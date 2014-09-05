@@ -35,10 +35,10 @@ class ClientConnector(context: Context) extends MultiCommandHandler {
         Col[Long]("SENT-RESP", 11, Alignment.Right),
         Col[Long]("RESP-RCVD", 11, Alignment.Right),
         Col[Long]("TIMEOUTS", 11, Alignment.Right)) { printer =>
-          val unrespondableSent = new Differ(connector.unrespondableSentCounter)
-          val respondableSent = new Differ(connector.respondableSentCounter)
-          val responsesReceived = new Differ(connector.responsesReceivedCounter)
-          val timeouts = new Differ(connector.timeoutsCounter)
+          val unrespondableSent = Differ.fromVolatile(connector.unrespondableSentCounter _)
+          val respondableSent = Differ.fromVolatile(connector.respondableSentCounter _)
+          val responsesReceived = Differ.fromVolatile(connector.responsesReceivedCounter _)
+          val timeouts = Differ.fromAtomic(connector.timeoutsCounter)
           while (true) {
             Thread.sleep(interval)
             printer(
@@ -65,9 +65,9 @@ class ClientConnector(context: Context) extends MultiCommandHandler {
       "" +
         f"Sending queue size:                ${connector.sendingQueue.size}%11d\n" +
         f"Pending responses:                 ${connector.currentConnection.map(_.pendingPromises.size).getOrElse(0)}%11d\n" +
-        f"Total unrespondable messages sent: ${connector.unrespondableSentCounter.get}%11d\n" +
-        f"Total respondable messages sent:   ${connector.respondableSentCounter.get}%11d\n" +
-        f"Total responses received:          ${connector.responsesReceivedCounter.get}%11d\n" +
+        f"Total unrespondable messages sent: ${connector.unrespondableSentCounter}%11d\n" +
+        f"Total respondable messages sent:   ${connector.respondableSentCounter}%11d\n" +
+        f"Total responses received:          ${connector.responsesReceivedCounter}%11d\n" +
         f"Total timed out messages:          ${connector.timeoutsCounter.get}%11d\n"
     }
   }
