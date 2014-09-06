@@ -21,11 +21,12 @@ import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.ScheduledThreadPoolExecutor
 import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.ThreadFactory
+import java.util.concurrent.atomic.AtomicLong
 
 class ClientConnection(val connector: ClientConnector, val socket: Socket) extends Logging {
 
-  private val readBuffer = new ReadBuffer(socket.getInputStream, connector.client.readerBufferSize)
-  private val writeBuffer = new WriteBuffer(socket.getOutputStream, connector.client.writerBufferSize)
+  val readBuffer = new ReadBuffer(socket.getInputStream, connector.client.readerBufferSize)
+  val writeBuffer = new WriteBuffer(socket.getOutputStream, connector.client.writerBufferSize)
 
   val readerThread = new Thread(readerLoop _, s"mot-client-reader-${connector.client.name}->${connector.target}")
 
@@ -52,6 +53,11 @@ class ClientConnection(val connector: ClientConnector, val socket: Socket) exten
   var lastMessage = 0L
   var msgSequence = 0
 
+  @volatile var unrespondableSentCounter = 0L 
+  @volatile var respondableSentCounter = 0L
+  @volatile var responsesReceivedCounter = 0L
+  val timeoutsCounter = new AtomicLong 
+  
   def startAndBlockWriting() = {
     readerThread.start()
     writerLoop()
@@ -123,11 +129,11 @@ class ClientConnection(val connector: ClientConnector, val socket: Socket) exten
         expirationTask.cancel(false /* mayInterruptIfRunning */ )
         if (!promise.isExpired(now)) {
           promise.fulfill(Message.fromArrays(response.attributes, body))
-          connector.responsesReceivedCounter += 1
+          responsesReceivedCounter += 1
         } else {
           logger.trace(s"Expired response (seq: ${response.requestReference}) arrived.")
           promise.forget(new ResponseTimeoutException)
-          connector.timeoutsCounter.incrementAndGet()
+          timeoutsCounter.incrementAndGet()
         }
       case None =>
         logger.trace("Unexpected response arrived (probably expired and then collected): " + response)
@@ -154,7 +160,7 @@ class ClientConnection(val connector: ClientConnector, val socket: Socket) exten
              * The purpose of heart beats is to keep the wire active where there are no messages.
              * This is useful for detecting dropped connections and avoiding read timeouts in the other side.
              */
-            if (now - lastMessage >= Protocol.HeartBeatInterval) {
+            if (now - lastMessage >= Protocol.HeartBeatIntervalNs) {
               val heartbeat = Heartbeat()
               logger.trace("Sending " + heartbeat)
               heartbeat.writeToBuffer(writeBuffer)
@@ -182,20 +188,20 @@ class ClientConnection(val connector: ClientConnector, val socket: Socket) exten
             case (p, _) =>
               logger.trace("Expiring pending response, sequence: " + seq)
               p.forget(new ResponseTimeoutException)
-              connector.timeoutsCounter.incrementAndGet()
+              timeoutsCounter.incrementAndGet()
           }
         }
         val expirationTask = promiseExpirator.schedule(forget _, promise.timeoutMs, TimeUnit.MILLISECONDS)
         pendingPromises.put(msgSequence, (promise, expirationTask))
-        connector.respondableSentCounter += 1
+        respondableSentCounter += 1
         doSendMessage(MessageFrame(true, promise.timeoutMs, message.attributes, message.bodyParts.map(_.array)))
       case Some(promise) =>
         // already expired, do not send anything
         promise.forget(new ResponseTimeoutException)
-        connector.timeoutsCounter.incrementAndGet()
+        timeoutsCounter.incrementAndGet()
       case None =>
         // Message is unrespondable
-        connector.unrespondableSentCounter += 1
+        unrespondableSentCounter += 1
         doSendMessage(MessageFrame(false, 0, message.attributes, message.bodyParts.map(_.array)))
     }
   }

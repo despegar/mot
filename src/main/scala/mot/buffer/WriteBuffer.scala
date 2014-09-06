@@ -5,14 +5,22 @@ import java.io.OutputStream
 class WriteBuffer(val os: OutputStream, val bufferSize: Int) {
 
   val array = Array.ofDim[Byte](bufferSize)
-
+  
   private var position = 0
-
+  
+  @volatile private var _bytesCount = 0L
+  @volatile private var _writeCount = 0L
+  @volatile private var _fullWrites = 0L
+  
   def writen() = position
   def remaining() = bufferSize - position
   
   def isFull() = position == bufferSize
   def hasData() = position > 0
+  
+  def bytesCount() = _bytesCount
+  def writeCount() = _writeCount
+  def fullWrties() = _fullWrites
   
   def put(byte: Byte) {
     if (isFull)
@@ -56,10 +64,16 @@ class WriteBuffer(val os: OutputStream, val bufferSize: Int) {
     put(WriteBuffer.byte1(x))
     put(WriteBuffer.byte0(x))
   }
-  
+
   def flush() {
-    os.write(array, 0, position)
-    position = 0
+    if (hasData) {
+      os.write(array, 0, position)
+      _bytesCount += position
+      _writeCount += 1
+      if (isFull)
+        _fullWrites += 1
+      position = 0
+    }
   }
 
 }

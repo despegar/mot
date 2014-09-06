@@ -28,9 +28,11 @@ class ReadBuffer(val is: InputStream, val bufferSize: Int) {
 
   @volatile private var _readCount = 0L
   @volatile private var _bufferFullCount = 0L
-
+  @volatile private var _bytesCount = 0L
+  
   def readCount() = _readCount
   def bufferFullCount() = _bufferFullCount
+  def bytesCount() = _bytesCount
   
   def clear() {
     lowPosition = 0
@@ -55,6 +57,7 @@ class ReadBuffer(val is: InputStream, val bufferSize: Int) {
     if (bytesRead == -1)
       throw new EOFException("EOF reading from input stream")
     highPosition += bytesRead
+    _bytesCount += bytesRead
     _readCount += 1
     if (!hasFreeSpace)
       _bufferFullCount += 1

@@ -4,6 +4,7 @@ import mot.util.LiveTabler
 import mot.util.Tabler
 import mot.Context
 import mot.Target
+import mot.util.Util.CeilingDivider
 
 class ClientConnector(context: Context) extends MultiCommandHandler {
 
@@ -27,6 +28,7 @@ class ClientConnector(context: Context) extends MultiCommandHandler {
       } catch {
         case e: CommandException => return e.getMessage
       }
+      val connection = connector.currentConnection.getOrElse(return "Not currently connected")
       LiveTabler.draw(
         partWriter,
         Col[Int]("SND-QUEUE", 9, Alignment.Right),
@@ -34,20 +36,29 @@ class ClientConnector(context: Context) extends MultiCommandHandler {
         Col[Long]("SENT-UNRSP", 11, Alignment.Right),
         Col[Long]("SENT-RESP", 11, Alignment.Right),
         Col[Long]("RESP-RCVD", 11, Alignment.Right),
-        Col[Long]("TIMEOUTS", 11, Alignment.Right)) { printer =>
-          val unrespondableSent = Differ.fromVolatile(connector.unrespondableSentCounter _)
-          val respondableSent = Differ.fromVolatile(connector.respondableSentCounter _)
-          val responsesReceived = Differ.fromVolatile(connector.responsesReceivedCounter _)
-          val timeouts = Differ.fromAtomic(connector.timeoutsCounter)
+        Col[Long]("TIMEOUTS", 11, Alignment.Right),
+        Col[Long]("KB-READ", 11, Alignment.Right),
+        Col[Long]("KB-WRITEN", 11, Alignment.Right)
+      ) { printer =>
+          val unrespondableSent = Differ.fromVolatile(connection.unrespondableSentCounter _)
+          val respondableSent = Differ.fromVolatile(connection.respondableSentCounter _)
+          val responsesReceived = Differ.fromVolatile(connection.responsesReceivedCounter _)
+          val timeouts = Differ.fromAtomic(connection.timeoutsCounter)
+          val bytesRead = Differ.fromVolatile(connection.readBuffer.bytesCount)
+          val bytesWriten = Differ.fromVolatile(connection.writeBuffer.bytesCount)
           while (true) {
+            if (connector.currentConnection.isEmpty)
+              return "Disconnected"
             Thread.sleep(interval)
             printer(
               connector.sendingQueue.size,
-              connector.currentConnection.map(_.pendingPromises.size).getOrElse(0),
+              connection.pendingPromises.size,
               unrespondableSent.diff(),
               respondableSent.diff(),
               responsesReceived.diff(),
-              timeouts.diff())
+              timeouts.diff(),
+              bytesRead.diff() /^ 1024,
+              bytesWriten.diff() /^ 1024)
           }
         }
       throw new AssertionError
@@ -62,13 +73,16 @@ class ClientConnector(context: Context) extends MultiCommandHandler {
       } catch {
         case e: CommandException => return e.getMessage
       }
+      val connection = connector.currentConnection.getOrElse(return "Not currently connected")
       "" +
         f"Sending queue size:                ${connector.sendingQueue.size}%11d\n" +
-        f"Pending responses:                 ${connector.currentConnection.map(_.pendingPromises.size).getOrElse(0)}%11d\n" +
-        f"Total unrespondable messages sent: ${connector.unrespondableSentCounter}%11d\n" +
-        f"Total respondable messages sent:   ${connector.respondableSentCounter}%11d\n" +
-        f"Total responses received:          ${connector.responsesReceivedCounter}%11d\n" +
-        f"Total timed out messages:          ${connector.timeoutsCounter.get}%11d\n"
+        f"Pending responses:                 ${connection.pendingPromises.size}%11d\n" +
+        f"Total unrespondable messages sent: ${connection.unrespondableSentCounter}%11d\n" +
+        f"Total respondable messages sent:   ${connection.respondableSentCounter}%11d\n" +
+        f"Total responses received:          ${connection.responsesReceivedCounter}%11d\n" +
+        f"Total timed out messages:          ${connection.timeoutsCounter.get}%11d\n"
+        f"Total read bytes:                  ${connection.readBuffer.bytesCount}%11d\n" +
+        f"Total writen bytes:                ${connection.writeBuffer.bytesCount}%11d\n"
     }
   }
 
