@@ -42,6 +42,7 @@ class ServerConnection(val server: Server, val socket: Socket) extends Logging {
 
   @volatile var receivedRespondable = 0L
   @volatile var receivedUnrespondable = 0L
+  @volatile var sentResponses = 0L
   val tooLateResponses = new AtomicLong
   
   def start() {
@@ -86,7 +87,7 @@ class ServerConnection(val server: Server, val socket: Socket) extends Logging {
           /*
            * There was something in the queue.
            * Note that it is not necessary to check for timeouts, as it was already checked when the response
-           * was enqueued, and there is no flow control in responses, everything is delivered as is arrives,
+           * was enqueued, and there is no flow control in responses, everything is delivered as it arrives,
            * so messages do not spend too much time in the queue.
            */
           sendMessage(seq, msg)
@@ -118,6 +119,7 @@ class ServerConnection(val server: Server, val socket: Socket) extends Logging {
     val response = Response(sequence, msg.attributes, msg.bodyParts.map(_.array))
     logger.trace("Sending " + response)
     response.writeToBuffer(writeBuffer)
+    sentResponses += 1
     lastMessage = System.nanoTime()
   }
 

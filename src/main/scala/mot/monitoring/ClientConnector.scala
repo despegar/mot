@@ -38,7 +38,7 @@ class ClientConnector(context: Context) extends MultiCommandHandler {
         Col[Long]("RESP-RCVD", 11, Alignment.Right),
         Col[Long]("TIMEOUTS", 11, Alignment.Right),
         Col[Long]("KB-READ", 11, Alignment.Right),
-        Col[Long]("KB-WRITEN", 11, Alignment.Right)
+        Col[Long]("KB-WRITTEN", 11, Alignment.Right)
       ) { printer =>
           val unrespondableSent = Differ.fromVolatile(connection.unrespondableSentCounter _)
           val respondableSent = Differ.fromVolatile(connection.respondableSentCounter _)
@@ -81,8 +81,8 @@ class ClientConnector(context: Context) extends MultiCommandHandler {
         f"Total respondable messages sent:   ${connection.respondableSentCounter}%11d\n" +
         f"Total responses received:          ${connection.responsesReceivedCounter}%11d\n" +
         f"Total timed out messages:          ${connection.timeoutsCounter.get}%11d\n"
-        f"Total read bytes:                  ${connection.readBuffer.bytesCount}%11d\n" +
-        f"Total writen bytes:                ${connection.writeBuffer.bytesCount}%11d\n"
+        f"Total bytes read:                  ${connection.readBuffer.bytesCount}%11d\n" +
+        f"Total bytes written:               ${connection.writeBuffer.bytesCount}%11d\n"
     }
   }
 

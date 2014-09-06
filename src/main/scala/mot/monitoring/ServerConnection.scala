@@ -4,6 +4,7 @@ import mot.util.LiveTabler
 import mot.util.Tabler
 import mot.Context
 import mot.Target
+import mot.util.Util.CeilingDivider
 
 class ServerConnection(context: Context) extends MultiCommandHandler {
 
@@ -22,28 +23,36 @@ class ServerConnection(context: Context) extends MultiCommandHandler {
     def handle(processedCommands: Seq[String], commands: Seq[String], partWriter: String => Unit): String = {
       import LiveTabler._
       import Tabler._
-      val connector = try {
-        getConnector(commands)
+      val connection = try {
+        getConnection(commands)
       } catch {
         case e: CommandException => return e.getMessage
       }
       LiveTabler.draw(
         partWriter,
         Col[Int]("SND-QUEUE", 9, Alignment.Right),
-        Col[Long]("RCV-RESP", 10, Alignment.Right),
-        Col[Long]("RCV-UNRESP", 10, Alignment.Right),
-        Col[Long]("TOO-LATE", 10, Alignment.Right)
-        ) { printer =>
-          val respondable = Differ.fromVolatile(connector.receivedRespondable _)
-          val unrespondable = Differ.fromVolatile(connector.receivedUnrespondable _)
-          val tooLate = Differ.fromAtomic(connector.tooLateResponses)
+        Col[Long]("RCV-RESP", 11, Alignment.Right),
+        Col[Long]("RCV-UNRESP", 11, Alignment.Right),
+        Col[Long]("SENT-RESP", 11, Alignment.Right),
+        Col[Long]("TOO-LATE", 11, Alignment.Right),
+        Col[Long]("KB-READ", 11, Alignment.Right),
+        Col[Long]("KB-WRITTEN", 11, Alignment.Right)) { printer =>
+          val respondable = Differ.fromVolatile(connection.receivedRespondable _)
+          val unrespondable = Differ.fromVolatile(connection.receivedUnrespondable _)
+          val sent = Differ.fromVolatile(connection.sentResponses _)
+          val tooLate = Differ.fromAtomic(connection.tooLateResponses)
+          val bytesRead = Differ.fromVolatile(connection.readBuffer.bytesCount)
+          val bytesWriten = Differ.fromVolatile(connection.writeBuffer.bytesCount)
           while (true) {
             Thread.sleep(interval)
             printer(
-              connector.sendingQueue.size,
+              connection.sendingQueue.size,
               respondable.diff(),
               unrespondable.diff(),
-              tooLate.diff())
+              sent.diff(),
+              tooLate.diff(),
+              bytesRead.diff() /^ 1024,
+              bytesWriten.diff() /^ 1024)
           }
         }
       throw new AssertionError
@@ -53,20 +62,23 @@ class ServerConnection(context: Context) extends MultiCommandHandler {
   object Totals extends SimpleCommandHandler {
     val name = "totals"
     def simpleHandle(processedCommands: Seq[String], commands: Seq[String]): String = {
-      val connector = try {
-        getConnector(commands)
+      val connection = try {
+        getConnection(commands)
       } catch {
         case e: CommandException => return e.getMessage
       }
       "" +
-        f"Sending queue size:           ${connector.sendingQueue.size}%11d\n" +
-        f"Received respondable:         ${connector.receivedRespondable}%11d\n" +
-        f"Received unrespondable:       ${connector.receivedUnrespondable}%11d\n" +
-        f"Responses producted too late: ${connector.tooLateResponses.get}%11d\n"
+        f"Sending queue size:           ${connection.sendingQueue.size}%11d\n" +
+        f"Received respondable:         ${connection.receivedRespondable}%11d\n" +
+        f"Received unrespondable:       ${connection.receivedUnrespondable}%11d\n" +
+        f"Sent responses:               ${connection.sentResponses}%11d\n" +
+        f"Responses producted too late: ${connection.tooLateResponses.get}%11d\n" +
+        f"Total bytes read:             ${connection.readBuffer.bytesCount}%11d\n" +
+        f"Total bytes written:          ${connection.writeBuffer.bytesCount}%11d\n"
     }
   }
 
-  def getConnector(commands: Seq[String]) = {
+  def getConnection(commands: Seq[String]) = {
     if (commands.size < 2)
       throw new CommandException("Must specify server and origin")
     val serverName +: originName +: rest = commands
