@@ -11,6 +11,8 @@ class ServerConnectionHandler(conn: ServerConnection) {
     connection = None
   }
   
+  def isValid() = connection.isDefined
+  
   def sendResponse(requestRef: Responder, response: Message) = {
     val conn = connection.getOrElse(throw new InvalidServerConnectionException(exception.get))
     conn.sendResponse(requestRef, response)

@@ -21,5 +21,7 @@ class Responder(val connection: ServerConnectionHandler, val sequence: Int, val 
   }
   
   def isOnTime(now: Long) = now <= expiration
-
+  
+  override def toString() = s"Responder(sequence=$sequence,receptionTime=$receptionTime,timeout=$timeoutMs)"
+  
 }

@@ -124,6 +124,6 @@ object ReadBuffer {
     makeInt(array(pos), array(pos + 1), array(pos + 2), array(pos + 3))
     
   def makeShort(b1: Byte, b0: Byte) = ((b1 << 8) | (b0 & 0xff)).toShort
-  def makeInt(b3: Byte, b2: Byte, b1: Byte, b0: Byte) = (b3 << 24) | (b2 << 16) | (b1 << 8) | (b0 & 0xff)
+  def makeInt(b3: Byte, b2: Byte, b1: Byte, b0: Byte) = (b3 << 24) | ((b2 << 16) & 0xffffff) | ((b1 << 8) & 0xffff) | (b0 & 0xff)
   
 }

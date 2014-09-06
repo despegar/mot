@@ -67,24 +67,11 @@ class Server(
   }
 
   def receive() = {
-    var res = receivingQueue.take()
-    while (!res.isOnTime(System.nanoTime())) {
-      res = receivingQueue.take()
-    } 
-    res
+    receivingQueue.take()
   }
   
   def receive(timeout: Long, unit: TimeUnit) = {
-    val nanos = unit.toNanos(timeout)
-    val start = System.nanoTime()
-    var res = receivingQueue.poll(nanos, TimeUnit.NANOSECONDS)
-    var now = System.nanoTime()
-    while (res != null && !res.isOnTime(now)) {
-      val remaining = nanos - (now - start)
-      res = receivingQueue.poll(remaining, TimeUnit.NANOSECONDS)
-      now = System.nanoTime()
-    }
-    res
+    receivingQueue.poll(timeout, unit)
   }
 
   def close() {

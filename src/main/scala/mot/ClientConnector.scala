@@ -19,7 +19,7 @@ class ClientConnector(val client: Client, val target: Target) extends Logging {
 
   val sendingQueue = new LinkedBlockingQueue[(Message, Option[ResponsePromise])](client.queueSize)
 
-  val thread = new Thread(writeLoop _, s"mot-client-connector-${client.name}->$target")
+  val thread = new Thread(connectLoop _, s"mot-client-connector-${client.name}->$target")
   val closed = new AtomicBoolean
   
   @volatile var currentConnection: Option[ClientConnection] = None
@@ -42,7 +42,7 @@ class ClientConnector(val client: Client, val target: Target) extends Logging {
   def put(message: Message, responsePlaceholder: Option[ResponsePromise]) =
     sendingQueue.put((message, responsePlaceholder))
 
-  def writeLoop() = {
+  def connectLoop() = {
     try {
       var socket = connectSocket()
       while (!closed.get) {

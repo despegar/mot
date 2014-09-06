@@ -22,7 +22,8 @@ case class MessageFrame(
     MessageBase.writeIntSizeByteMultiField(writeBuffer, bodyParts)
   }
   
-  override def toString() = s"MessageFrame(attributes=[${attributes.keys.mkString(",")}],bodySize=$bodySize)"
+  override def toString() = 
+    s"MessageFrame(respondable=$respondable,timeout=$timeout,attributes=[${attributes.keys.mkString(",")}],bodySize=$bodySize)"
 
 }
 
