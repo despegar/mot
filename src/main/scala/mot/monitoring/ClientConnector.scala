@@ -38,14 +38,17 @@ class ClientConnector(context: Context) extends MultiCommandHandler {
         Col[Long]("RESP-RCVD", 11, Alignment.Right),
         Col[Long]("TIMEOUTS", 11, Alignment.Right),
         Col[Long]("KB-READ", 11, Alignment.Right),
-        Col[Long]("KB-WRITTEN", 11, Alignment.Right)
-      ) { printer =>
+        Col[Long]("KB-WRITTEN", 11, Alignment.Right),
+        Col[Long]("BUF-FILLINGS", 12, Alignment.Right),
+        Col[Long]("BUF-FULL", 11, Alignment.Right)) { printer =>
           val unrespondableSent = Differ.fromVolatile(connection.unrespondableSentCounter _)
           val respondableSent = Differ.fromVolatile(connection.respondableSentCounter _)
           val responsesReceived = Differ.fromVolatile(connection.responsesReceivedCounter _)
           val timeouts = Differ.fromAtomic(connection.timeoutsCounter)
           val bytesRead = Differ.fromVolatile(connection.readBuffer.bytesCount)
           val bytesWriten = Differ.fromVolatile(connection.writeBuffer.bytesCount)
+          val fillings = Differ.fromVolatile(connection.readBuffer.readCount)
+          val fillingsFull = Differ.fromVolatile(connection.readBuffer.bufferFullCount)
           while (true) {
             if (connector.currentConnection.isEmpty)
               return "Disconnected"
@@ -58,7 +61,9 @@ class ClientConnector(context: Context) extends MultiCommandHandler {
               responsesReceived.diff(),
               timeouts.diff(),
               bytesRead.diff() /^ 1024,
-              bytesWriten.diff() /^ 1024)
+              bytesWriten.diff() /^ 1024,
+              fillings.diff(),
+              fillingsFull.diff())
           }
         }
       throw new AssertionError
@@ -82,7 +87,9 @@ class ClientConnector(context: Context) extends MultiCommandHandler {
         f"Total responses received:          ${connection.responsesReceivedCounter}%11d\n" +
         f"Total timed out messages:          ${connection.timeoutsCounter.get}%11d\n"
         f"Total bytes read:                  ${connection.readBuffer.bytesCount}%11d\n" +
-        f"Total bytes written:               ${connection.writeBuffer.bytesCount}%11d\n"
+        f"Total bytes written:               ${connection.writeBuffer.bytesCount}%11d\n" +
+        f"Total buffer fillings:             ${connection.readBuffer.readCount}%11d\n" +
+        f"Total full buffer fillings:        ${connection.readBuffer.bufferFullCount}%11d\n"
     }
   }
 

@@ -36,13 +36,17 @@ class ServerConnection(context: Context) extends MultiCommandHandler {
         Col[Long]("SENT-RESP", 11, Alignment.Right),
         Col[Long]("TOO-LATE", 11, Alignment.Right),
         Col[Long]("KB-READ", 11, Alignment.Right),
-        Col[Long]("KB-WRITTEN", 11, Alignment.Right)) { printer =>
+        Col[Long]("KB-WRITTEN", 11, Alignment.Right),
+        Col[Long]("BUF-FILLINGS", 12, Alignment.Right),
+        Col[Long]("BUF-FULL", 11, Alignment.Right)) { printer =>
           val respondable = Differ.fromVolatile(connection.receivedRespondable _)
           val unrespondable = Differ.fromVolatile(connection.receivedUnrespondable _)
           val sent = Differ.fromVolatile(connection.sentResponses _)
           val tooLate = Differ.fromAtomic(connection.tooLateResponses)
           val bytesRead = Differ.fromVolatile(connection.readBuffer.bytesCount)
           val bytesWriten = Differ.fromVolatile(connection.writeBuffer.bytesCount)
+          val fillings = Differ.fromVolatile(connection.readBuffer.readCount)
+          val fillingsFull = Differ.fromVolatile(connection.readBuffer.bufferFullCount)
           while (true) {
             Thread.sleep(interval)
             printer(
@@ -52,7 +56,9 @@ class ServerConnection(context: Context) extends MultiCommandHandler {
               sent.diff(),
               tooLate.diff(),
               bytesRead.diff() /^ 1024,
-              bytesWriten.diff() /^ 1024)
+              bytesWriten.diff() /^ 1024,
+              fillings.diff(),
+              fillingsFull.diff())
           }
         }
       throw new AssertionError
@@ -74,7 +80,9 @@ class ServerConnection(context: Context) extends MultiCommandHandler {
         f"Sent responses:               ${connection.sentResponses}%11d\n" +
         f"Responses producted too late: ${connection.tooLateResponses.get}%11d\n" +
         f"Total bytes read:             ${connection.readBuffer.bytesCount}%11d\n" +
-        f"Total bytes written:          ${connection.writeBuffer.bytesCount}%11d\n"
+        f"Total bytes written:          ${connection.writeBuffer.bytesCount}%11d\n" +
+        f"Total buffer fillings:        ${connection.readBuffer.readCount}%11d\n" +
+        f"Total full buffer fillings:   ${connection.readBuffer.bufferFullCount}%11d\n"
     }
   }
 
