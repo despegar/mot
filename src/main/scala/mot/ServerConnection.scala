@@ -91,6 +91,8 @@ class ServerConnection(val server: Server, val socket: Socket) extends Logging {
            * so messages do not spend too much time in the queue.
            */
           sendMessage(seq, msg)
+          if (sendingQueue.isEmpty)
+            writeBuffer.flush()
         } else {
           /*
            * The purpose of heart beats is to keep the wire active where there are no messages.
@@ -101,11 +103,9 @@ class ServerConnection(val server: Server, val socket: Socket) extends Logging {
             val heartbeat = Heartbeat()
             logger.trace("Sending " + heartbeat)
             heartbeat.writeToBuffer(writeBuffer)
+            writeBuffer.flush()
             lastMessage = System.nanoTime()
           }
-          // Do not let the buffer contents without flushing too much time
-          if (writeBuffer.hasData)
-            writeBuffer.flush()
         }
       }
     } catch {

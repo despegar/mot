@@ -154,6 +154,8 @@ class ClientConnection(val connector: ClientConnector, val socket: Socket) exten
              * There was something in the queue
              */
             sendMessage(now, message, optionalPromise)
+            if (connector.sendingQueue.isEmpty)
+              writeBuffer.flush()
           case None =>
             /*
              * Nothing in the queue after some time, send heart beat.
@@ -164,11 +166,9 @@ class ClientConnection(val connector: ClientConnector, val socket: Socket) exten
               val heartbeat = Heartbeat()
               logger.trace("Sending " + heartbeat)
               heartbeat.writeToBuffer(writeBuffer)
+              writeBuffer.flush()
               lastMessage = System.nanoTime()
             }
-            // Do not let the buffer contents without flushing too much time
-            if (writeBuffer.hasData)
-              writeBuffer.flush()
         }
       }
     } catch {
