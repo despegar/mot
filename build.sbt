@@ -24,6 +24,7 @@ fork in Test := true
 
 connectInput in Test := true
 
-javaOptions in Test ++= Seq("-Xmx650m", "-Xms650m", "-XX:NewSize=580m")
+//javaOptions in Test ++= Seq("-Xmx650m", "-Xms650m", "-XX:NewSize=580m")
+javaOptions in Test ++= Seq("-Xmx500m", "-Xms500m", "-XX:NewSize=450m")
 
 outputStrategy := Some(StdoutOutput)

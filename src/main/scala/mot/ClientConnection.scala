@@ -214,7 +214,7 @@ class ClientConnection(val connector: ClientConnector, val socket: Socket) exten
   }
 
   private def forgetAllPromises(cause: Throwable) = {
-    logger.debug("Forgetting all promises of client connection: " + socket.getLocalSocketAddress())
+    logger.debug("Forgetting all promises of client connection: " + socket.getLocalSocketAddress)
     for ((promise, expirationTask) <- pendingPromises.values) {
       expirationTask.cancel(false /* mayInterruptIfRunning */ )
       promise.forget(new InvalidClientConnectionException(cause))
