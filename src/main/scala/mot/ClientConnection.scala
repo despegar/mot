@@ -35,7 +35,10 @@ class ClientConnection(val connector: ClientConnector, val socket: Socket) exten
       def newThread(r: Runnable) =
         new Thread(r, "mot-client-promise-expiratior-${connector.client.name}->${connector.target}")
     }
-    new ScheduledThreadPoolExecutor(1, tf)
+    val stpe = new ScheduledThreadPoolExecutor(1, tf)
+    // Reduce memory footprint, as the happy path (the response arriving) implies task cancellation 
+    stpe.setRemoveOnCancelPolicy(true) 
+    stpe
   }
 
   val pendingPromises =
@@ -57,6 +60,8 @@ class ClientConnection(val connector: ClientConnector, val socket: Socket) exten
   @volatile var respondableSentCounter = 0L
   @volatile var responsesReceivedCounter = 0L
   val timeoutsCounter = new AtomicLong 
+  
+  def isClosed() = closed.get
   
   def startAndBlockWriting() = {
     readerThread.start()
