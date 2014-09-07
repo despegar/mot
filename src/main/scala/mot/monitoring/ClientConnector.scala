@@ -50,7 +50,7 @@ class ClientConnector(context: Context) extends MultiCommandHandler {
           val fillings = Differ.fromVolatile(connection.readBuffer.readCount)
           val fillingsFull = Differ.fromVolatile(connection.readBuffer.bufferFullCount)
           while (true) {
-            if (connector.currentConnection.isEmpty)
+            if (connection.isClosed)
               return "Disconnected"
             Thread.sleep(interval)
             printer(
