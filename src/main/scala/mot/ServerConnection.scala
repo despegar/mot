@@ -20,6 +20,7 @@ import mot.message.ServerHello
 import mot.message.Response
 import Util.FunctionToRunnable
 import java.util.concurrent.atomic.AtomicLong
+import scala.collection.immutable
 
 class ServerConnection(val server: Server, val socket: Socket) extends Logging {
 
@@ -174,7 +175,7 @@ class ServerConnection(val server: Server, val socket: Socket) extends Logging {
       receivedUnrespondable += 1
       None
     }
-    val incomingMessage = IncomingMessage(responder, from, clientName, Message.fromByteBuffer(message.attributes, body))
+    val incomingMessage = IncomingMessage(responder, from, clientName, Message(message.attributes, immutable.Seq(body)))
     sequence += 1
     offer(server.receivingQueue, incomingMessage, finalized)
   }

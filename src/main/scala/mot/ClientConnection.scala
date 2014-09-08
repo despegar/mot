@@ -22,6 +22,7 @@ import java.util.concurrent.ScheduledThreadPoolExecutor
 import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.ThreadFactory
 import java.util.concurrent.atomic.AtomicLong
+import scala.collection.immutable
 
 class ClientConnection(val connector: ClientConnector, val socket: Socket) extends Logging {
 
@@ -133,7 +134,7 @@ class ClientConnection(val connector: ClientConnector, val socket: Socket) exten
       case Some(pendingResponse) =>
         pendingResponse.expirationTask.cancel(false /* mayInterruptIfRunning */ )
         if (now < pendingResponse.expiration) {
-          pendingResponse.promise.trySuccess(Message.fromByteBuffer(response.attributes, body))
+          pendingResponse.promise.trySuccess(Message(response.attributes, immutable.Seq(body)))
           responsesReceivedCounter += 1
         } else {
           logger.trace(s"Expired response (seq: ${response.requestReference}) arrived.")
