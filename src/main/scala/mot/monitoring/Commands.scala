@@ -10,6 +10,7 @@ import java.net.SocketException
 import java.io.PrintStream
 import java.net.Socket
 import mot.Context
+import scala.collection.immutable
 
 class Commands(context: Context, monitoringPort: Int) extends Logging with MultiCommandHandler {
 
@@ -33,13 +34,13 @@ class Commands(context: Context, monitoringPort: Int) extends Logging with Multi
     val os = socket.getOutputStream
     try {
       val req = Source.fromInputStream(is).mkString("")
-      val reqParts = if (req.isEmpty) Seq() else req.split(" ").toSeq
+      val reqParts = if (req.isEmpty) immutable.Seq() else req.split(" ").to[immutable.Seq]
       def writer(part: String): Unit = {
         streamming = true
         os.write(part.getBytes)
         os.write("\n".getBytes)
       }
-      val res = handle(Seq(name), reqParts, writer)
+      val res = handle(immutable.Seq(name), reqParts, writer)
       if (streamming)
         throw new Exception("Cannot return if streamming")
       os.write(res.getBytes)
@@ -67,7 +68,7 @@ class Commands(context: Context, monitoringPort: Int) extends Logging with Multi
 
   val name = "cnd"
 
-  val subcommands = Seq(
+  val subcommands = immutable.Seq(
     new Clients(context),
     new ClientConnectors(context),
     new ClientConnector(context),

@@ -1,6 +1,7 @@
 package mot
 
 import java.nio.ByteBuffer
+import scala.collection.immutable
 
 object MessageValidator {
 
@@ -19,7 +20,7 @@ object MessageValidator {
     }
   }
   
-  def validateBodyParts(bodyParts: Seq[ByteBuffer]) = {
+  def validateBodyParts(bodyParts: immutable.Seq[ByteBuffer]) = {
     if (bodyParts.map(_.limit).sum > Protocol.BodyMaxLength)
       throw new IllegalArgumentException("message cannot be longer than " + Protocol.BodyMaxLength)
   }

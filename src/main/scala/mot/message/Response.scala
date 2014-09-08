@@ -2,13 +2,12 @@ package mot.message
 
 import mot.buffer.ReadBuffer
 import mot.buffer.WriteBuffer
+import scala.collection.immutable
 
 case class Response(
   requestReference: Int,
   attributes: Map[String, Array[Byte]],
-  bodyParts: Seq[Array[Byte]]) extends MessageBase {
-
-  val bodySize = bodyParts.map(_.length).sum
+  bodyParts: immutable.Seq[Array[Byte]]) extends MessageBase {
 
   def writeToBuffer(writeBuffer: WriteBuffer) = {
     writeBuffer.put(MessageType.Response.id.toByte)
@@ -18,7 +17,7 @@ case class Response(
   }
 
   override def toString() =
-    s"Response(reqRef=$requestReference,attributes=[${attributes.keys.mkString(",")}],bodySize=$bodySize)"
+    s"Response(reqRef=$requestReference,attributes=[${attributes.keys.mkString(",")}],bodySize=${bodyParts.map(_.length).sum})"
 
 }
 
@@ -29,7 +28,7 @@ object Response {
     val attributes = MessageBase.readAttributes(readBuffer)
     val body = MessageBase.readIntSizeByteField(readBuffer, maxLength)
     // TODO: Ver qué hacer con los atributos repetidos
-    Response(requestReference, attributes.toMap, Seq(body))
+    Response(requestReference, attributes.toMap, immutable.Seq(body))
   }
 
 }

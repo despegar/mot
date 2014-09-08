@@ -5,6 +5,7 @@ import mot.BadDataException
 import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
 import mot.buffer.WriteBuffer
+import scala.collection.immutable
 
 trait MessageBase {
   def writeToBuffer(writeBuffer: WriteBuffer)
@@ -28,10 +29,13 @@ object MessageBase {
     }
   }
 
-  def readAttributes(readBuffer: ReadBuffer) = {
+  def readAttributes(readBuffer: ReadBuffer): immutable.Seq[(String, Array[Byte])] = {
     val size = readBuffer.get
     if (size < 0)
       throw new BadDataException("Negative attribute number: " + size)
+    // Optimize no-attributes case
+    if (size == 0)
+      return Vector.empty
     for (i <- 0 until size) yield {
       val name = new String(readByteSizeByteField(readBuffer), StandardCharsets.US_ASCII)
       val value = readShortByteField(readBuffer)
@@ -84,7 +88,7 @@ object MessageBase {
     writeBuffer.put(array)
   }
   
-  def writeIntSizeByteMultiField(writeBuffer: WriteBuffer, arrays: Seq[Array[Byte]]) = {
+  def writeIntSizeByteMultiField(writeBuffer: WriteBuffer, arrays: immutable.Seq[Array[Byte]]) = {
     val length = arrays.map(_.length).sum
     writeBuffer.putInt(length)
     arrays.foreach(writeBuffer.put)

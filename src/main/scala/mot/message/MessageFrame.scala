@@ -5,14 +5,15 @@ import mot.buffer.WriteBuffer
 import mot.Util.ByteToBoolean
 import mot.Util.BooleanToByte
 import mot.BadDataException
+import scala.collection.immutable
 
 case class MessageFrame(
     respondable: Boolean,
     timeout: Int,
     attributes: Map[String, Array[Byte]], 
-    bodyParts: Seq[Array[Byte]]) extends MessageBase {
+    bodyParts: immutable.Seq[Array[Byte]]) extends MessageBase {
 
-  val bodySize = bodyParts.map(_.length).sum
+  private val bodySize = bodyParts.map(_.length).sum
   
   def writeToBuffer(writeBuffer: WriteBuffer) = {
     writeBuffer.put(MessageType.Message.id.toByte)
@@ -23,7 +24,7 @@ case class MessageFrame(
   }
   
   override def toString() = 
-    s"MessageFrame(respondable=$respondable,timeout=$timeout,attributes=[${attributes.keys.mkString(",")}],bodySize=$bodySize)"
+    s"MessageFrame(respondable=$respondable,timeout=$timeout,attributes=[${attributes.keys.mkString(",")}],bodySize=${bodyParts.map(_.length).sum})"
 
 }
 
@@ -37,7 +38,7 @@ object MessageFrame {
     val attributes = MessageBase.readAttributes(readBuffer)
     val body = MessageBase.readIntSizeByteField(readBuffer, maxLength)
     // TODO: Ver qué hacer con los atributos repetidos
-    MessageFrame(respondable, timeout, attributes.toMap, Seq(body))
+    MessageFrame(respondable, timeout, attributes.toMap, immutable.Seq(body))
   }
 
 }

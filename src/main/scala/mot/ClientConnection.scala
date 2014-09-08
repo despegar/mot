@@ -133,7 +133,7 @@ class ClientConnection(val connector: ClientConnector, val socket: Socket) exten
       case Some(pendingResponse) =>
         pendingResponse.expirationTask.cancel(false /* mayInterruptIfRunning */ )
         if (now < pendingResponse.expiration) {
-          pendingResponse.promise.trySuccess(Message.fromArrays(response.attributes, body))
+          pendingResponse.promise.trySuccess(Message.fromArray(response.attributes, body))
           responsesReceivedCounter += 1
         } else {
           logger.trace(s"Expired response (seq: ${response.requestReference}) arrived.")

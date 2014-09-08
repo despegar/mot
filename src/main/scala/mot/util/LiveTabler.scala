@@ -1,10 +1,12 @@
 package mot.util
 
 import scala.collection.mutable.ListBuffer
+import scala.collection.immutable
 
 object LiveTabler {
 
   import Tabler._
+  import immutable.Seq
     
   val headerInterval = 20
     
@@ -20,7 +22,7 @@ object LiveTabler {
     val lines = ListBuffer[String]()
     var i = 0
     val headers = headerFormats.mkString(" ") format ((columns.map(_.name).toSeq): _*)
-    def printer(values: Seq[Any]) = {
+    def printer(values: immutable.Seq[Any]) = {
       assert(values.size == columns.size)
       if (i % headerInterval == 0)
         partWriter(headers)

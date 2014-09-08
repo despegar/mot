@@ -3,6 +3,7 @@ package mot.monitoring
 import mot.util.Tabler
 import mot.Context
 import collection.JavaConversions._
+import scala.collection.immutable
 
 class ServerConnections(context: Context) extends SimpleCommandHandler {
 
@@ -10,7 +11,7 @@ class ServerConnections(context: Context) extends SimpleCommandHandler {
 
   val helpLine = "Print information about server connections"
 
-  def simpleHandle(processedCommands: Seq[String], commands: Seq[String]) = {
+  def simpleHandle(processedCommands: immutable.Seq[String], commands: immutable.Seq[String]) = {
     import Tabler._
     Tabler.draw(
       Col[String]("SERVER", 15, Alignment.Left),

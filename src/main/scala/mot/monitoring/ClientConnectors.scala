@@ -3,6 +3,7 @@ package mot.monitoring
 import mot.util.Tabler
 import mot.Context
 import collection.JavaConversions._
+import scala.collection.immutable
 
 class ClientConnectors(context: Context) extends SimpleCommandHandler {
 
@@ -10,7 +11,7 @@ class ClientConnectors(context: Context) extends SimpleCommandHandler {
 
   val helpLine = "Print information about client connectors"
 
-  def simpleHandle(processedCommands: Seq[String], commands: Seq[String]) = {
+  def simpleHandle(processedCommands: immutable.Seq[String], commands: immutable.Seq[String]) = {
     import Tabler._
     Tabler.draw(
       Col[String]("CLIENT", 13, Alignment.Left),

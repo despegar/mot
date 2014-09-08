@@ -5,10 +5,11 @@ import mot.util.Tabler
 import mot.Context
 import mot.Target
 import mot.util.Util.CeilingDivider
+import scala.collection.immutable
 
 class ServerConnection(context: Context) extends MultiCommandHandler {
 
-  val subcommands = Seq(Live, Totals)
+  val subcommands = immutable.Seq(Live, Totals)
 
   val name = "server-connection"
 
@@ -20,7 +21,7 @@ class ServerConnection(context: Context) extends MultiCommandHandler {
 
   object Live extends CommandHandler {
     val name = "live"
-    def handle(processedCommands: Seq[String], commands: Seq[String], partWriter: String => Unit): String = {
+    def handle(processedCommands: immutable.Seq[String], commands: immutable.Seq[String], partWriter: String => Unit): String = {
       import LiveTabler._
       import Tabler._
       val connection = try {
@@ -67,7 +68,7 @@ class ServerConnection(context: Context) extends MultiCommandHandler {
 
   object Totals extends SimpleCommandHandler {
     val name = "totals"
-    def simpleHandle(processedCommands: Seq[String], commands: Seq[String]): String = {
+    def simpleHandle(processedCommands: immutable.Seq[String], commands: immutable.Seq[String]): String = {
       val connection = try {
         getConnection(commands)
       } catch {
@@ -86,7 +87,7 @@ class ServerConnection(context: Context) extends MultiCommandHandler {
     }
   }
 
-  def getConnection(commands: Seq[String]) = {
+  def getConnection(commands: immutable.Seq[String]) = {
     if (commands.size < 2)
       throw new CommandException("Must specify server and origin")
     val serverName +: originName +: rest = commands
