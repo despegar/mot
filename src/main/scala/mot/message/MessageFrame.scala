@@ -6,12 +6,13 @@ import mot.Util.ByteToBoolean
 import mot.Util.BooleanToByte
 import mot.BadDataException
 import scala.collection.immutable
+import java.nio.ByteBuffer
 
 case class MessageFrame(
     respondable: Boolean,
     timeout: Int,
     attributes: Map[String, Array[Byte]], 
-    bodyParts: immutable.Seq[Array[Byte]]) extends MessageBase {
+    bodyParts: immutable.Seq[ByteBuffer]) extends MessageBase {
 
   def writeToBuffer(writeBuffer: WriteBuffer) = {
     writeBuffer.put(MessageType.Message.id.toByte)
@@ -22,7 +23,7 @@ case class MessageFrame(
   }
   
   override def toString() = 
-    s"MessageFrame(respondable=$respondable,timeout=$timeout,attributes=[${attributes.keys.mkString(",")}],bodySize=${bodyParts.map(_.length).sum})"
+    s"MessageFrame(respondable=$respondable,timeout=$timeout,attributes=[${attributes.keys.mkString(",")}],bodySize=${bodyParts.map(_.limit).sum})"
 
 }
 
@@ -36,7 +37,7 @@ object MessageFrame {
     val attributes = MessageBase.readAttributes(readBuffer)
     val body = MessageBase.readIntSizeByteField(readBuffer, maxLength)
     // TODO: Ver qué hacer con los atributos repetidos
-    MessageFrame(respondable, timeout, attributes.toMap, immutable.Seq(body))
+    MessageFrame(respondable, timeout, attributes.toMap, immutable.Seq(ByteBuffer.wrap(body)))
   }
 
 }

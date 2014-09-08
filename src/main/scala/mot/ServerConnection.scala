@@ -116,7 +116,7 @@ class ServerConnection(val server: Server, val socket: Socket) extends Logging {
   }
 
   def sendMessage(sequence: Int, msg: Message) = {
-    val response = Response(sequence, msg.attributes, msg.bodyParts.map(_.array))
+    val response = Response(sequence, msg.attributes, msg.bodyParts)
     logger.trace("Sending " + response)
     response.writeToBuffer(writeBuffer)
     sentResponses += 1
@@ -174,7 +174,7 @@ class ServerConnection(val server: Server, val socket: Socket) extends Logging {
       receivedUnrespondable += 1
       None
     }
-    val incomingMessage = IncomingMessage(responder, from, clientName, Message.fromArray(message.attributes, body))
+    val incomingMessage = IncomingMessage(responder, from, clientName, Message.fromByteBuffer(message.attributes, body))
     sequence += 1
     offer(server.receivingQueue, incomingMessage, finalized)
   }
