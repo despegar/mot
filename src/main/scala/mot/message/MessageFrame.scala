@@ -11,7 +11,7 @@ import java.nio.ByteBuffer
 case class MessageFrame(
     respondable: Boolean,
     timeout: Int,
-    attributes: Map[String, Array[Byte]], 
+    attributes: immutable.Seq[(String, Array[Byte])], 
     bodyParts: immutable.Seq[ByteBuffer]) extends MessageBase {
 
   def writeToBuffer(writeBuffer: WriteBuffer) = {
@@ -22,8 +22,11 @@ case class MessageFrame(
     MessageBase.writeIntSizeByteMultiField(writeBuffer, bodyParts)
   }
   
-  override def toString() = 
-    s"MessageFrame(respondable=$respondable,timeout=$timeout,attributes=[${attributes.keys.mkString(",")}],bodySize=${bodyParts.map(_.limit).sum})"
+  override def toString() = {
+    val attrKeys = attributes.unzip._1
+    val bodySize = bodyParts.map(_.limit).sum
+    s"MessageFrame(respondable=$respondable,timeout=$timeout,attributes=[${attrKeys.mkString(",")}],bodySize=$bodySize)"
+  }
 
 }
 
@@ -36,8 +39,7 @@ object MessageFrame {
       throw new BadDataException("Received non-zero timeout value for a non-respondable message: " + timeout)
     val attributes = MessageBase.readAttributes(readBuffer)
     val body = MessageBase.readIntSizeByteField(readBuffer, maxLength)
-    // TODO: Ver qué hacer con los atributos repetidos
-    MessageFrame(respondable, timeout, attributes.toMap, ByteBuffer.wrap(body) :: Nil /* use :: to avoid mutable builders */)
+    MessageFrame(respondable, timeout, attributes, ByteBuffer.wrap(body) :: Nil /* use :: to avoid mutable builders */)
   }
 
 }

@@ -70,7 +70,7 @@ object MessageBase {
     fieldBuffer.array
   }
 
-  def writeAttributes(writeBuffer: WriteBuffer, attributes: Map[String, Array[Byte]]) = {
+  def writeAttributes(writeBuffer: WriteBuffer, attributes: immutable.Seq[(String, Array[Byte])]) = {
     writeBuffer.put(attributes.size.toByte)
     for ((name, value) <- attributes) {
       writeByteSizeByteField(writeBuffer, name.getBytes(StandardCharsets.US_ASCII))
