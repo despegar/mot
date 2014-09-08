@@ -15,7 +15,7 @@ import scala.concurrent.Promise
  * Represents the link between the client and one server.
  * This connector will create connections and re-create them forever when they terminate with errors.
  */
-class ClientConnector(val client: Client, val target: Target) extends Logging {
+class ClientConnector(val client: Client, val target: Address) extends Logging {
 
   val sendingQueue = new LinkedBlockingQueue[(Message, Option[ResponsePromise])](client.queueSize)
 

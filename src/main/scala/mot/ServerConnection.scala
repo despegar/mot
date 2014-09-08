@@ -24,7 +24,7 @@ import scala.collection.immutable
 
 class ServerConnection(val server: Server, val socket: Socket) extends Logging {
 
-  val from = socket.getRemoteSocketAddress.asInstanceOf[InetSocketAddress]
+  val from = Address(socket.getInetAddress.getHostAddress, socket.getPort)
   val finalized = new AtomicBoolean
   val handler = new ServerConnectionHandler(this)
 
@@ -47,13 +47,14 @@ class ServerConnection(val server: Server, val socket: Socket) extends Logging {
   val tooLateResponses = new AtomicLong
   
   def start() {
-    server.connections.put(Target(socket.getInetAddress.getHostAddress, socket.getPort), this)
+    server.connections.put(from, this)
     readerThread.start()
     writerThread.start()
   }
 
   def finalize(e: Throwable) {
     if (finalized.compareAndSet(false, true)) {
+      logger.debug("Finalizing server connection from ")
       handler.reportError(e)
       Util.closeSocket(socket)
       server.connections.remove(from)

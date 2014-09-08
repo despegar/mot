@@ -44,7 +44,7 @@ class Server(
 
   private[mot] val receivingQueue = new LinkedBlockingQueue[IncomingMessage](receivingQueueSize)
 
-  private[mot] val connections = new ConcurrentHashMap[Target, ServerConnection]
+  private[mot] val connections = new ConcurrentHashMap[Address, ServerConnection]
 
   val acceptThread = new Thread(acceptLoop _, s"$bindAddress-acceptor")
 

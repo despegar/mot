@@ -31,7 +31,7 @@ class Client(
   val pessimistic: Boolean = false) extends Logging {
 
   // TODO: GC unused connectors
-  private[mot] val connectors = new ConcurrentHashMap[Target, ClientConnector]
+  private[mot] val connectors = new ConcurrentHashMap[Address, ClientConnector]
 
   @volatile private var closed = false
 
@@ -47,7 +47,7 @@ class Client(
       throw new IllegalArgumentException(s"Client name cannot be longer than $max characters")
   }
 
-  private def getConnector(target: Target) = {
+  private def getConnector(target: Address) = {
     var connector = connectors.get(target)
     if (connector == null) {
       connector = synchronized {
@@ -68,7 +68,7 @@ class Client(
    * Offer a request. Succeed only if the message can be enqueued immediately.
    * @return Some(future) of a response if the message could be enqueued or None if the corresponding queue overflowed
    */
-  def offerRequest(target: Target, message: Message, timeout: Int) = {
+  def offerRequest(target: Address, message: Message, timeout: Int) = {
     checkClosed()
     val connector = getConnector(target)
     bePessimistic(connector)
@@ -84,7 +84,7 @@ class Client(
    * Send a request. Block until the message can be enqueued.
    * @return a future of a response
    */
-  def sendRequest(target: Target, message: Message, timeout: Int) = {
+  def sendRequest(target: Address, message: Message, timeout: Int) = {
     checkClosed()
     val connector = getConnector(target)
     bePessimistic(connector)
@@ -94,17 +94,17 @@ class Client(
     p.future
   }
   
-  def sendRequestAndWait(target: Target, message: Message, timeout: Int) =
+  def sendRequestAndWait(target: Address, message: Message, timeout: Int) =
     Await.result(sendRequest(target, message, timeout), Duration(timeout, TimeUnit.MILLISECONDS))
   
-  def sendMessage(target: Target, message: Message) = {
+  def sendMessage(target: Address, message: Message) = {
     checkClosed()
     val connector = getConnector(target)
     bePessimistic(connector)
     connector.put(message, None)
   }
   
-  def offerMessage(target: Target, message: Message) = {
+  def offerMessage(target: Address, message: Message) = {
     checkClosed()
     val connector = getConnector(target)
     bePessimistic(connector)

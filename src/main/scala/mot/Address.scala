@@ -2,11 +2,11 @@ package mot
 
 import scala.collection.immutable
 
-case class Target(host: String, port: Int) {
+case class Address(host: String, port: Int) {
   override def toString() = s"$host:$port"
 }
 
-object Target {
+object Address {
   def fromString(str: String) = {
     val parts = str.split(":").to[immutable.Seq]
     if (parts.size != 2)
@@ -17,6 +17,6 @@ object Target {
     } catch {
       case e: NumberFormatException => throw new IllegalArgumentException("Port is not a number: " + portStr)
     }
-    Target(host, port)
+    Address(host, port)
   }
 }

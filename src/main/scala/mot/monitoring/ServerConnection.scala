@@ -3,7 +3,7 @@ package mot.monitoring
 import mot.util.LiveTabler
 import mot.util.Tabler
 import mot.Context
-import mot.Target
+import mot.Address
 import mot.util.Util.CeilingDivider
 import scala.collection.immutable
 
@@ -94,7 +94,7 @@ class ServerConnection(context: Context) extends MultiCommandHandler {
     val server = Option(context.servers.get(serverName)).getOrElse {
       throw new CommandException("Unknown server: " + serverName)
     }
-    val origin = Target.fromString(originName)
+    val origin = Address.fromString(originName)
     Option(server.connections.get(origin)).getOrElse(throw new CommandException("Unknown origin: " + originName))
   }
 

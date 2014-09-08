@@ -3,9 +3,9 @@ package mot.monitoring
 import mot.util.LiveTabler
 import mot.util.Tabler
 import mot.Context
-import mot.Target
 import mot.util.Util.CeilingDivider
 import scala.collection.immutable
+import mot.Address
 
 class ClientConnector(context: Context) extends MultiCommandHandler {
 
@@ -101,7 +101,7 @@ class ClientConnector(context: Context) extends MultiCommandHandler {
     val client = Option(context.clients.get(clientName)).getOrElse {
       throw new CommandException("Unknown client: " + clientName)
     }
-    val target = Target.fromString(targetName)
+    val target = Address.fromString(targetName)
     Option(client.connectors.get(target)).getOrElse(throw new CommandException("Unknown target: " + targetName))
   }
 
