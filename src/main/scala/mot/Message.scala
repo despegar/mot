@@ -54,7 +54,9 @@ object Message {
   }
   
   def validateBodyParts(bodyParts: immutable.Seq[ByteBuffer]) = {
-    if (bodyParts.map(_.limit).sum > Protocol.BodyMaxLength)
+    // avoid the intermediate collection that map + sum would produce
+    val totalSize = bodyParts.foldLeft(0)(_ + _.limit)
+    if (totalSize > Protocol.BodyMaxLength)
       throw new IllegalArgumentException("message cannot be longer than " + Protocol.BodyMaxLength)
   }
   
