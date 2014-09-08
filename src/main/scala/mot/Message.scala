@@ -28,7 +28,7 @@ object Message {
   }
 
   def fromByteBuffer(attributes: Map[String, Array[Byte]], bodyPart: ByteBuffer) = {
-    val parts = immutable.Seq(bodyPart)
+    val parts = bodyPart :: Nil /* use :: to avoid mutable builders */
     validate(attributes, parts)
     new Message(attributes, parts)
   }

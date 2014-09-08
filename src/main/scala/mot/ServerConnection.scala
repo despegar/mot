@@ -175,7 +175,8 @@ class ServerConnection(val server: Server, val socket: Socket) extends Logging {
       receivedUnrespondable += 1
       None
     }
-    val incomingMessage = IncomingMessage(responder, from, clientName, Message(message.attributes, immutable.Seq(body)))
+    val incomingMessage =
+      IncomingMessage(responder, from, clientName, Message(message.attributes, body :: Nil  /* use :: to avoid mutable builders */))
     sequence += 1
     offer(server.receivingQueue, incomingMessage, finalized)
   }

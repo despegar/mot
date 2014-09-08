@@ -29,7 +29,7 @@ object Response {
     val attributes = MessageBase.readAttributes(readBuffer)
     val body = MessageBase.readIntSizeByteField(readBuffer, maxLength)
     // TODO: Ver qué hacer con los atributos repetidos
-    Response(requestReference, attributes.toMap, immutable.Seq(ByteBuffer.wrap(body)))
+    Response(requestReference, attributes.toMap, ByteBuffer.wrap(body) :: Nil /* use :: to avoid mutable builders */)
   }
 
 }
