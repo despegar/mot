@@ -31,7 +31,7 @@ class ClientConnectors(context: Context) extends SimpleCommandHandler {
                 conn.socket.getInetAddress.getHostAddress + ":" + conn.socket.getPort,
                 Option(conn.serverName).getOrElse("-"),
                 conn.maxLength,
-                conn.pendingPromises.size)
+                conn.pendingResponses.size)
             case None =>
               ("-", "-", "-", -1, 0)
           }

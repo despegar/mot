@@ -24,7 +24,7 @@ class TestClient {
     var i = 0L 
     while (true) {
       val res = client.sendRequest(target, msg, 60000)
-      Await.result(res, Duration.apply(60, TimeUnit.SECONDS))
+      //Await.result(res, Duration.apply(60, TimeUnit.SECONDS))
     }
   }
   

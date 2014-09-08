@@ -74,7 +74,7 @@ class Client(
     bePessimistic(connector)
     val p = promise[Message]
     val now = System.nanoTime()
-    if (connector.offer(message, Some(ResponsePromise(p, now, timeout))))
+    if (connector.offer(message, Some(new ResponsePromise(p, now, timeout))))
       Some(p.future)
     else
       None
@@ -90,7 +90,7 @@ class Client(
     bePessimistic(connector)
     val p = promise[Message]
     val now = System.nanoTime()
-    connector.put(message, Some(ResponsePromise(p, now, timeout)))
+    connector.put(message, Some(new ResponsePromise(p, now, timeout)))
     p.future
   }
   

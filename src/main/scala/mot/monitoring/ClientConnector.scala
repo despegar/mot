@@ -55,7 +55,7 @@ class ClientConnector(context: Context) extends MultiCommandHandler {
             Thread.sleep(interval)
             printer(
               connector.sendingQueue.size,
-              connection.pendingPromises.size,
+              connection.pendingResponses.size,
               unrespondableSent.diff(),
               respondableSent.diff(),
               responsesReceived.diff(),
@@ -81,7 +81,7 @@ class ClientConnector(context: Context) extends MultiCommandHandler {
       val connection = connector.currentConnection.getOrElse(return "Not currently connected")
       "" +
         f"Sending queue size:                ${connector.sendingQueue.size}%11d\n" +
-        f"Pending responses:                 ${connection.pendingPromises.size}%11d\n" +
+        f"Pending responses:                 ${connection.pendingResponses.size}%11d\n" +
         f"Total unrespondable messages sent: ${connection.unrespondableSentCounter}%11d\n" +
         f"Total respondable messages sent:   ${connection.respondableSentCounter}%11d\n" +
         f"Total responses received:          ${connection.responsesReceivedCounter}%11d\n" +
