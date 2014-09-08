@@ -13,8 +13,6 @@ case class MessageFrame(
     attributes: Map[String, Array[Byte]], 
     bodyParts: immutable.Seq[Array[Byte]]) extends MessageBase {
 
-  private val bodySize = bodyParts.map(_.length).sum
-  
   def writeToBuffer(writeBuffer: WriteBuffer) = {
     writeBuffer.put(MessageType.Message.id.toByte)
     writeBuffer.put(respondable.toByte)
