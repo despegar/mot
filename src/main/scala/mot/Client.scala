@@ -8,6 +8,7 @@ import Util.FunctionToRunnable
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 import java.util.concurrent.TimeUnit
+import scala.util.control.NonFatal
 
 /**
  * Thread model:
@@ -28,16 +29,40 @@ class Client(
   val readerBufferSize: Int = 10000,
   val writerBufferSize: Int = 2000,
   val connectTimeout: Int = 3000,
+  val connectorGcSec: Int = 60,
   val pessimistic: Boolean = false) extends Logging {
 
-  // TODO: GC unused connectors
   private[mot] val connectors = new ConcurrentHashMap[Address, ClientConnector]
 
   @volatile private var closed = false
+  
+  val expiratorThread = new Thread(connectorExpirator _, s"mot-connector-expirator-$name")
 
   checkName()
-
   context.clients.put(name, this)
+  expiratorThread.start()
+  
+  def connectorExpirator() = {
+    try {
+      val runDelayMs = 1000
+      val connectorGcNs = connectorGcSec.toLong * 1000 * 1000 * 1000
+      while (!closed) {
+        val threshold = System.nanoTime() - connectorGcNs
+        val it = connectors.entrySet.iterator
+        while (it.hasNext) {
+          val entry = it.next
+          val (target, connector) = (entry.getKey, entry.getValue)
+          if (connector.lastUse < threshold) {
+            it.remove()
+            connector.close()
+          }
+        }
+    	Thread.sleep(runDelayMs)
+      }
+    } catch {
+      case NonFatal(e) => context.uncaughtErrorHandler.handle(e)
+    }
+  }
   
   private def checkName() {
     if (!Util.isAscii(name))

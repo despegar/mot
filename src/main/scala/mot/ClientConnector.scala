@@ -30,17 +30,24 @@ class ClientConnector(val client: Client, val target: Address) extends Logging {
    */
   @volatile var lastConnectingException: Option[Throwable] = None
 
+  @volatile var lastUse = System.nanoTime()
+  
   thread.start()
-
+  logger.debug(s"Creating connector: ${client.name}->$target")
+  
   def isConnected() = currentConnection.isDefined
   def lastConnectingError() = lastConnectingException
   def isErrorState() = lastConnectingException.isDefined
 
-  def offer(message: Message, responsePlaceholder: Option[ResponsePromise]) =
+  def offer(message: Message, responsePlaceholder: Option[ResponsePromise]) = {
+    lastUse = System.nanoTime()
     sendingQueue.offer((message, responsePlaceholder))
+  }
 
-  def put(message: Message, responsePlaceholder: Option[ResponsePromise]) =
+  def put(message: Message, responsePlaceholder: Option[ResponsePromise]) = {
+    lastUse = System.nanoTime()
     sendingQueue.put((message, responsePlaceholder))
+  }
 
   def connectLoop() = {
     try {
@@ -86,6 +93,7 @@ class ClientConnector(val client: Client, val target: Address) extends Logging {
   }
 
   def close() {
+    logger.debug(s"Closing connector ${client.name}->$target")
     closed.set(true)
     currentConnection.foreach(_.close())
     thread.join()
