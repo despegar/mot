@@ -23,7 +23,7 @@ class ClientConnector(val client: Client, val target: Address) extends Logging {
 
   val sendingQueue = new LinkedBlockingQueue[(Message, Option[PendingResponse])](client.queueSize)
 
-  val thread = new Thread(connectLoop _, s"mot-client-connector-${client.name}->$target")
+  val thread = new Thread(connectLoop _, s"mot[${client.name}]-connector-for-$target")
   val closed = new AtomicBoolean
 
   @volatile var currentConnection: Option[ClientConnection] = None
@@ -42,7 +42,7 @@ class ClientConnector(val client: Client, val target: Address) extends Logging {
   val promiseExpirator = {
     val tf = new ThreadFactory {
       def newThread(r: Runnable) =
-        new Thread(r, s"mot-client-promise-expiratior-${client.name}->$target")
+        new Thread(r, s"mot[${client.name}]-promise-expiratior-for-$target")
     }
     val stpe = new ScheduledThreadPoolExecutor(1, tf)
     // Reduce memory footprint, as the happy path (the response arriving) implies task cancellation 
@@ -113,7 +113,7 @@ class ClientConnector(val client: Client, val target: Address) extends Logging {
       // Create a socket address for each connection attempt, to avoid caching DNS resolution forever
       val socketAddress = new InetSocketAddress(target.host, target.port)
       socket.connect(socketAddress, client.connectTimeout)
-      logger.debug(s"Socket to $target connected")
+      logger.info(s"Socket to $target connected")
       socket
     }
     val start = System.nanoTime()

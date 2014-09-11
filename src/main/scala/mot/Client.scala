@@ -36,7 +36,7 @@ class Client(
 
   @volatile private var closed = false
   
-  val expiratorThread = new Thread(connectorExpirator _, s"mot-connector-expirator-$name")
+  val expiratorThread = new Thread(connectorExpirator _, s"mot[$name]-connector-expirator")
 
   Protocol.checkName(name)
   context.registerClient(this)

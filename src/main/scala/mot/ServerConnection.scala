@@ -30,8 +30,8 @@ class ServerConnection(val server: Server, val socket: Socket) extends Logging {
 
   val sendingQueue = new LinkedBlockingQueue[(Int, Message)](server.sendingQueueSize)
 
-  val readerThread = new Thread(readerLoop _, s"mot-server-reader-${server.name}<-${from}")
-  val writerThread = new Thread(writerLoop _, s"mot-server-writer-${server.name}<-${from}")
+  val readerThread = new Thread(readerLoop _, s"mot[${server.name}]-reader-for-${from}")
+  val writerThread = new Thread(writerLoop _, s"mot[${server.name}]-writer-for-${from}")
 
   val readBuffer = new ReadBuffer(socket.getInputStream, server.readerBufferSize)
   val writeBuffer = new WriteBuffer(socket.getOutputStream, server.writerBufferSize)
@@ -45,6 +45,8 @@ class ServerConnection(val server: Server, val socket: Socket) extends Logging {
   @volatile var receivedUnrespondable = 0L
   @volatile var sentResponses = 0L
   val tooLateResponses = new AtomicLong
+  
+  logger.info("Accepted connection from " + from)
   
   def start() {
     server.connections.put(from, this)

@@ -29,7 +29,7 @@ class ClientConnection(val connector: ClientConnector, val socket: Socket) exten
   val readBuffer = new ReadBuffer(socket.getInputStream, connector.client.readerBufferSize)
   val writeBuffer = new WriteBuffer(socket.getOutputStream, connector.client.writerBufferSize)
 
-  val readerThread = new Thread(readerLoop _, s"mot-client-reader-${connector.client.name}->${connector.target}")
+  val readerThread = new Thread(readerLoop _, s"mot[${connector.client.name}]-reader-for-${connector.target}")
 
   val pendingResponses =
     new ConcurrentHashMap[Int /* sequence */ , PendingResponse](

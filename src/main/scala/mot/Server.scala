@@ -46,7 +46,7 @@ class Server(
 
   private[mot] val connections = new ConcurrentHashMap[Address, ServerConnection]
 
-  val acceptThread = new Thread(acceptLoop _, s"$bindAddress-acceptor")
+  val acceptThread = new Thread(acceptLoop _, s"mot[${name}]-acceptor")
 
   @volatile private var closed = false
 
