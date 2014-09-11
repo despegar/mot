@@ -38,7 +38,7 @@ class Client(
   
   val expiratorThread = new Thread(connectorExpirator _, s"mot-connector-expirator-$name")
 
-  checkName()
+  Protocol.checkName(name)
   context.clients.put(name, this)
   expiratorThread.start()
   
@@ -62,14 +62,6 @@ class Client(
     } catch {
       case NonFatal(e) => context.uncaughtErrorHandler.handle(e)
     }
-  }
-  
-  private def checkName() {
-    if (!Util.isAscii(name))
-      throw new IllegalArgumentException(s"Only US-ASCII characters are allowed in client name")
-    val max = Protocol.PublisherNameMaxLength
-    if (name.length > max)
-      throw new IllegalArgumentException(s"Client name cannot be longer than $max characters")
   }
 
   private def getConnector(target: Address) = {

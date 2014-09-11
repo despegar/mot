@@ -27,9 +27,17 @@ object Protocol {
   val HeartBeatInterval = 5000
   val HeartBeatIntervalNs = HeartBeatInterval.toLong * 1000 * 1000 
   
-  val PublisherNameMaxLength = Byte.MaxValue
+  val PartyNameMaxLength = Byte.MaxValue
   val AttributeNameMaxLength = Byte.MaxValue
   val AttributeValueMaxLength = Short.MaxValue
   val BodyMaxLength = Int.MaxValue
+  
+    
+  def checkName(name: String) {
+    if (!Util.isAscii(name))
+      throw new IllegalArgumentException(s"Only US-ASCII characters are allowed in party name")
+    if (name.length > PartyNameMaxLength)
+      throw new IllegalArgumentException(s"Party name cannot be longer than $PartyNameMaxLength characters")
+  }
   
 }
