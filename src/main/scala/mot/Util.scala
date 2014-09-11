@@ -5,6 +5,7 @@ import java.net.SocketException
 import java.net.ServerSocket
 import java.util.concurrent.atomic.AtomicBoolean
 import java.nio.charset.StandardCharsets
+import java.util.concurrent.locks.Lock
 
 object Util {
 
@@ -69,5 +70,14 @@ object Util {
   }
 
   def isAscii(string: String) = StandardCharsets.US_ASCII.newEncoder.canEncode(string)
+  
+  def withLock[A](lock: Lock)(thunk: => A) = {
+    lock.lock()
+    try {
+      thunk
+    } finally {
+      lock.unlock()
+    }
+  }
   
 }

@@ -1,3 +1,5 @@
+organization := "mot"
+
 name := "mot"
 
 version := "0.1-SNAPSHOT"
@@ -24,6 +26,6 @@ fork := true
 
 connectInput := true
 
-javaOptions  ++= Seq("-Xmx1100m", "-Xms1100m", "-XX:NewSize=1000m")
+javaOptions  ++= Seq("-Xmx900m", "-Xms900m", "-XX:NewSize=850m")
 
 outputStrategy := Some(StdoutOutput)

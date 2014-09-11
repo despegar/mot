@@ -98,8 +98,7 @@ class Client(
     val connector = getConnector(target)
     bePessimistic(connector)
     val p = promise[Message]
-    val now = System.nanoTime()
-    if (connector.offer(message, Some(new ResponsePromise(p, now, timeout))))
+    if (connector.offerRequest(message, new PendingResponse(p, timeout, connector)))
       Some(p.future)
     else
       None
@@ -114,8 +113,7 @@ class Client(
     val connector = getConnector(target)
     bePessimistic(connector)
     val p = promise[Message]
-    val now = System.nanoTime()
-    connector.put(message, Some(new ResponsePromise(p, now, timeout)))
+    connector.putRequest(message, new PendingResponse(p, timeout, connector))
     p.future
   }
   
@@ -126,14 +124,14 @@ class Client(
     checkClosed()
     val connector = getConnector(target)
     bePessimistic(connector)
-    connector.put(message, None)
+    connector.putMessage(message)
   }
   
   def offerMessage(target: Address, message: Message) = {
     checkClosed()
     val connector = getConnector(target)
     bePessimistic(connector)
-    connector.offer(message, None)
+    connector.offerMessage(message)
   }
 
   private def bePessimistic(connector: ClientConnector) = {

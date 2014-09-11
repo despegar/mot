@@ -3,18 +3,21 @@ package mot
 import java.nio.ByteBuffer
 import scala.collection.immutable
 
-/**
- * A to-be-sent message.
- *
- * @param attributes a dictionary of attributes
- * @param bodyParts a sequence of ByteBuffer instances; the parts are concatenated to form the final message
- */
 case class Message private[mot] (attributes: immutable.Seq[(String, Array[Byte])] = Nil, bodyParts: immutable.Seq[ByteBuffer] = Nil) {
+  
   override def toString() = {
     val attrKeys = attributes.unzip._1
     val bodySize = bodyParts.map(_.limit).sum
     s"$attributes=[${attrKeys.mkString(",")}],bodySize=$bodySize"
   }
+  
+  def uniquePart() = {
+    if (bodyParts.length == 1)
+      bodyParts.head
+    else
+      throw new Exception("Message has not exactly one part")   
+  } 
+  
 }
 
 object Message {

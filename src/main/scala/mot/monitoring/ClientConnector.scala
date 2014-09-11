@@ -45,7 +45,7 @@ class ClientConnector(context: Context) extends MultiCommandHandler {
           val unrespondableSent = Differ.fromVolatile(connection.unrespondableSentCounter _)
           val respondableSent = Differ.fromVolatile(connection.respondableSentCounter _)
           val responsesReceived = Differ.fromVolatile(connection.responsesReceivedCounter _)
-          val timeouts = Differ.fromAtomic(connection.timeoutsCounter)
+          val timeouts = Differ.fromVolatile(connector.timeoutsCounter _)
           val bytesRead = Differ.fromVolatile(connection.readBuffer.bytesCount)
           val bytesWriten = Differ.fromVolatile(connection.writeBuffer.bytesCount)
           val fillings = Differ.fromVolatile(connection.readBuffer.readCount)
@@ -86,7 +86,7 @@ class ClientConnector(context: Context) extends MultiCommandHandler {
         f"Total unrespondable messages sent: ${connection.unrespondableSentCounter}%11d\n" +
         f"Total respondable messages sent:   ${connection.respondableSentCounter}%11d\n" +
         f"Total responses received:          ${connection.responsesReceivedCounter}%11d\n" +
-        f"Total timed out messages:          ${connection.timeoutsCounter.get}%11d\n"
+        f"Total timed out messages:          ${connector.timeoutsCounter}%11d\n"
         f"Total bytes read:                  ${connection.readBuffer.bytesCount}%11d\n" +
         f"Total bytes written:               ${connection.writeBuffer.bytesCount}%11d\n" +
         f"Total buffer fillings:             ${connection.readBuffer.readCount}%11d\n" +

@@ -10,6 +10,10 @@ import java.util.concurrent.LinkedBlockingQueue
 import java.io.IOException
 import java.util.concurrent.ConcurrentHashMap
 import scala.concurrent.Promise
+import java.util.concurrent.ThreadFactory
+import java.util.concurrent.ScheduledThreadPoolExecutor
+import java.util.concurrent.atomic.AtomicLong
+import java.util.concurrent.TimeUnit
 
 /**
  * Represents the link between the client and one server.
@@ -17,13 +21,13 @@ import scala.concurrent.Promise
  */
 class ClientConnector(val client: Client, val target: Address) extends Logging {
 
-  val sendingQueue = new LinkedBlockingQueue[(Message, Option[ResponsePromise])](client.queueSize)
+  val sendingQueue = new LinkedBlockingQueue[(Message, Option[PendingResponse])](client.queueSize)
 
   val thread = new Thread(connectLoop _, s"mot-client-connector-${client.name}->$target")
   val closed = new AtomicBoolean
-  
+
   @volatile var currentConnection: Option[ClientConnection] = None
-  
+
   /**
    * Hold the last exception than occurred trying to establish a connection. Does not hold exceptions
    * produced during the connection.
@@ -31,22 +35,56 @@ class ClientConnector(val client: Client, val target: Address) extends Logging {
   @volatile var lastConnectingException: Option[Throwable] = None
 
   @volatile var lastUse = System.nanoTime()
-  
+
+  // It need not be atomic as the expirator has only one thread
+  @volatile var timeoutsCounter = 0L
+
+  val promiseExpirator = {
+    val tf = new ThreadFactory {
+      def newThread(r: Runnable) =
+        new Thread(r, s"mot-client-promise-expiratior-${client.name}->$target")
+    }
+    val stpe = new ScheduledThreadPoolExecutor(1, tf)
+    // Reduce memory footprint, as the happy path (the response arriving) implies task cancellation 
+    stpe.setRemoveOnCancelPolicy(true)
+    stpe
+  }
+
   thread.start()
   logger.debug(s"Creating connector: ${client.name}->$target")
-  
+
   def isConnected() = currentConnection.isDefined
   def lastConnectingError() = lastConnectingException
   def isErrorState() = lastConnectingException.isDefined
 
-  def offer(message: Message, responsePlaceholder: Option[ResponsePromise]) = {
+  def offerMessage(message: Message) = {
     lastUse = System.nanoTime()
-    sendingQueue.offer((message, responsePlaceholder))
+    sendingQueue.offer((message, None))
   }
 
-  def put(message: Message, responsePlaceholder: Option[ResponsePromise]) = {
+  def putMessage(message: Message) = {
     lastUse = System.nanoTime()
-    sendingQueue.put((message, responsePlaceholder))
+    sendingQueue.put((message, None))
+  }
+
+  def offerRequest(message: Message, pendingResponse: PendingResponse) = {
+    lastUse = System.nanoTime()
+    /* 
+     * It is necessary to schedule the expiration before enqueuing to avoid a race condition between the assignment of the variable
+     * with the task and the arrival of the response (in case it arrives quickly). This forces to unschedule the task if the 
+     * enqueueing fails.
+     */  
+    pendingResponse.scheduleExpiration()
+    val success = sendingQueue.offer((message, Some(pendingResponse)))
+    if (!success)
+      pendingResponse.unscheduleExpiration()
+    success
+  }
+
+  def putRequest(message: Message, pendingResponse: PendingResponse) = {
+    lastUse = System.nanoTime()
+    pendingResponse.scheduleExpiration()
+    sendingQueue.put((message, Some(pendingResponse)))
   }
 
   def connectLoop() = {

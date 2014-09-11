@@ -31,17 +31,6 @@ class ClientConnection(val connector: ClientConnector, val socket: Socket) exten
 
   val readerThread = new Thread(readerLoop _, s"mot-client-reader-${connector.client.name}->${connector.target}")
 
-  val promiseExpirator = {
-    val tf = new ThreadFactory {
-      def newThread(r: Runnable) =
-        new Thread(r, s"mot-client-promise-expiratior-${connector.client.name}->${connector.target}")
-    }
-    val stpe = new ScheduledThreadPoolExecutor(1, tf)
-    // Reduce memory footprint, as the happy path (the response arriving) implies task cancellation 
-    stpe.setRemoveOnCancelPolicy(true) 
-    stpe
-  }
-
   val pendingResponses =
     new ConcurrentHashMap[Int /* sequence */ , PendingResponse](
       256 /* initial capacity */ ,
@@ -57,13 +46,12 @@ class ClientConnection(val connector: ClientConnector, val socket: Socket) exten
   var lastMessage = 0L
   var msgSequence = 0
 
-  @volatile var unrespondableSentCounter = 0L 
+  @volatile var unrespondableSentCounter = 0L
   @volatile var respondableSentCounter = 0L
   @volatile var responsesReceivedCounter = 0L
-  val timeoutsCounter = new AtomicLong 
-  
+
   def isClosed() = closed.get
-  
+
   def startAndBlockWriting() = {
     readerThread.start()
     writerLoop()
@@ -82,7 +70,7 @@ class ClientConnection(val connector: ClientConnector, val socket: Socket) exten
 
   def close() {
     reportError(new ClientClosedException)
-    promiseExpirator.shutdown()
+    connector.promiseExpirator.shutdown()
   }
 
   def readerLoop() = {
@@ -132,15 +120,7 @@ class ClientConnection(val connector: ClientConnector, val socket: Socket) exten
     val body = response.bodyParts.head // Incoming messages only have one part
     Option(pendingResponses.remove(response.requestReference)) match {
       case Some(pendingResponse) =>
-        pendingResponse.expirationTask.cancel(false /* mayInterruptIfRunning */ )
-        if (now < pendingResponse.expiration) {
-          pendingResponse.promise.trySuccess(Message(response.attributes, body :: Nil  /* use :: to avoid mutable builders */))
-          responsesReceivedCounter += 1
-        } else {
-          logger.trace(s"Expired response (seq: ${response.requestReference}) arrived.")
-          pendingResponse.promise.tryFailure(new ResponseTimeoutException)
-          timeoutsCounter.incrementAndGet()
-        }
+        pendingResponse.fulfill(Message(response.attributes, body :: Nil /* use :: to avoid mutable builders */ ))
       case None =>
         logger.trace("Unexpected response arrived (probably expired and then collected): " + response)
     }
@@ -184,27 +164,15 @@ class ClientConnection(val connector: ClientConnector, val socket: Socket) exten
     }
   }
 
-  private def sendMessage(now: Long, message: Message, optionalPromise: Option[ResponsePromise]) {
-    optionalPromise match {
-      case Some(promise) if now < promise.expiration =>
+  private def sendMessage(now: Long, message: Message, pendingResponse: Option[PendingResponse]) {
+    pendingResponse match {
+      case Some(pr) =>
         // Message is respondable
-        val seq = msgSequence // capture for use inside closure
-        def forget() = {
-          Option(pendingResponses.remove(seq)).foreach {
-            case pendingResponse =>
-              logger.trace("Expiring pending response, sequence: " + seq)
-              pendingResponse.promise.tryFailure(new ResponseTimeoutException)
-              timeoutsCounter.incrementAndGet()
-          }
+        if (pr.markSent(this, msgSequence)) {
+          // Message has not expired
+          respondableSentCounter += 1
+          doSendMessage(MessageFrame(true, pr.timeoutMs, message.attributes, message.bodyParts))
         }
-        val expirationTask = promiseExpirator.schedule(forget _, promise.timeoutMs, TimeUnit.MILLISECONDS)
-        pendingResponses.put(msgSequence, PendingResponse(promise.promise, promise.expiration, expirationTask))
-        respondableSentCounter += 1
-        doSendMessage(MessageFrame(true, promise.timeoutMs, message.attributes, message.bodyParts))
-      case Some(promise) =>
-        // already expired, do not send anything
-        promise.promise.tryFailure(new ResponseTimeoutException)
-        timeoutsCounter.incrementAndGet()
       case None =>
         // Message is unrespondable
         unrespondableSentCounter += 1
@@ -222,7 +190,7 @@ class ClientConnection(val connector: ClientConnector, val socket: Socket) exten
   private def forgetAllPromises(cause: Throwable) = {
     logger.debug("Forgetting all promises of client connection: " + socket.getLocalSocketAddress)
     for (pendingResponse <- pendingResponses.values) {
-      pendingResponse.expirationTask.cancel(false /* mayInterruptIfRunning */ )
+      pendingResponse.unscheduleExpiration()
       pendingResponse.promise.tryFailure(new InvalidClientConnectionException(cause))
     }
   }
