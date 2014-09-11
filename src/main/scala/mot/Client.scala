@@ -29,7 +29,7 @@ class Client(
   val readerBufferSize: Int = 10000,
   val writerBufferSize: Int = 2000,
   val connectTimeout: Int = 3000,
-  val connectorGcSec: Int = 60,
+  val connectorGcSec: Int = 600,
   val pessimistic: Boolean = false) extends Logging {
 
   private[mot] val connectors = new ConcurrentHashMap[Address, ClientConnector]
