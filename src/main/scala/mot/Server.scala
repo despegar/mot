@@ -51,7 +51,7 @@ class Server(
   @volatile private var closed = false
 
   Protocol.checkName(name)
-  context.servers.put(name, this)
+  context.registerServer(this)
   acceptThread.start()
 
   private def acceptLoop() {

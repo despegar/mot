@@ -39,7 +39,7 @@ class Client(
   val expiratorThread = new Thread(connectorExpirator _, s"mot-connector-expirator-$name")
 
   Protocol.checkName(name)
-  context.clients.put(name, this)
+  context.registerClient(this)
   expiratorThread.start()
   
   def connectorExpirator() = {
