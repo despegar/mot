@@ -14,12 +14,12 @@ class ClientConnectors(context: Context) extends SimpleCommandHandler {
   def simpleHandle(processedCommands: immutable.Seq[String], commands: immutable.Seq[String]) = {
     import Tabler._
     Tabler.draw(
-      Col[String]("CLIENT", 13, Alignment.Left),
+      Col[String]("CLIENT", 17, Alignment.Left),
       Col[String]("TARGET", 25, Alignment.Left),
       Col[Int]("SND-QUEUE", 9, Alignment.Right),
       Col[String]("LOCAL-ADDR", 25, Alignment.Left),
       Col[String]("REMOTE-ADDR", 25, Alignment.Left),
-      Col[String]("SERVER", 13, Alignment.Left),
+      Col[String]("SERVER", 17, Alignment.Left),
       Col[Int]("MAX-LEN", 9, Alignment.Right),
       Col[Int]("PENDING", 7, Alignment.Right),
       Col[String]("LAST ERROR", 20, Alignment.Left)) { printer =>

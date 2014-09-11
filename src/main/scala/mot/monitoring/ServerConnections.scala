@@ -14,8 +14,8 @@ class ServerConnections(context: Context) extends SimpleCommandHandler {
   def simpleHandle(processedCommands: immutable.Seq[String], commands: immutable.Seq[String]) = {
     import Tabler._
     Tabler.draw(
-      Col[String]("SERVER", 15, Alignment.Left),
-      Col[String]("CLIENT", 15, Alignment.Left),
+      Col[String]("SERVER", 17, Alignment.Left),
+      Col[String]("CLIENT", 17, Alignment.Left),
       Col[String]("REMOTE-ADDR", 25, Alignment.Left),
       Col[Int]("SND-QUEUE", 9, Alignment.Right)) { printer =>
         for (server <- context.servers.values; conn <- server.connections.values) {
