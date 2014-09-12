@@ -23,6 +23,9 @@ import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.ThreadFactory
 import java.util.concurrent.atomic.AtomicLong
 import scala.collection.immutable
+import scala.concurrent.promise
+import scala.concurrent.Await
+import scala.concurrent.duration.Duration
 
 class ClientConnection(val connector: ClientConnector, val socket: Socket) extends Logging {
 
@@ -39,9 +42,12 @@ class ClientConnection(val connector: ClientConnector, val socket: Socket) exten
 
   val closed = new AtomicBoolean
 
-  @volatile var maxLength: Option[Int] = None
-  @volatile var serverName: Option[String] = None
-
+  val serverHelloPromise = promise[ServerHello]
+  val serverHelloFuture = serverHelloPromise.future
+  
+  def serverName() = serverHelloFuture.value.map(_.get.name)
+  def maxLength() = serverHelloFuture.value.map(_.get.maxLength)
+    
   @volatile var unrespondableSentCounter = 0L
   @volatile var respondableSentCounter = 0L
   @volatile var responsesReceivedCounter = 0L
@@ -111,8 +117,7 @@ class ClientConnection(val connector: ClientConnector, val socket: Socket) exten
     // TODO: Ver de tolerar versiones nuevas
     if (serverHello.protocolVersion > Protocol.ProtocolVersion)
       throw new UncompatibleProtocolVersion(s"read ${serverHello.protocolVersion}, must be ${Protocol.ProtocolVersion}")
-    maxLength = Some(serverHello.maxLength)
-    serverName = Some(serverHello.name)
+    serverHelloPromise.success(serverHello)
   }
 
   def processMessage(now: Long, response: Response) = {
@@ -130,6 +135,7 @@ class ClientConnection(val connector: ClientConnector, val socket: Socket) exten
       val clientHello = ClientHello(1, connector.client.name, Short.MaxValue)
       logger.trace("Sending " + clientHello)
       clientHello.writeToBuffer(writeBuffer)
+      val serverHello = Await.result(serverHelloFuture, Duration.Inf)
       while (!closed.get) {
         val dequeued = Option(connector.sendingQueue.poll(200, TimeUnit.MILLISECONDS))
         val now = System.nanoTime()
@@ -138,7 +144,7 @@ class ClientConnection(val connector: ClientConnector, val socket: Socket) exten
             /*
              * There was something in the queue
              */
-            sendMessage(now, message, optionalPromise)
+            sendMessage(now, message, optionalPromise, serverHello.maxLength)
             if (connector.sendingQueue.isEmpty)
               writeBuffer.flush()
           case None =>
@@ -163,14 +169,14 @@ class ClientConnection(val connector: ClientConnector, val socket: Socket) exten
     }
   }
 
-  private def sendMessage(now: Long, msg: Message, pendingResponse: Option[PendingResponse]) {
-    if (msg.bodyLength > maxLength.get) {
+  private def sendMessage(now: Long, msg: Message, pendingResponse: Option[PendingResponse], maxLength: Int) {
+    if (msg.bodyLength > maxLength) {
     /* 
      * The client is trying to send a message larger than the maximum allowed by the server. If the message is respondable
      * it is possible to let the client know using the promise. If the message is unrespondable, the only thing we can do
      * is log the error.
      */ 
-      val exception = new MessageTooLargeException(msg.bodyLength, maxLength.get)
+      val exception = new MessageTooLargeException(msg.bodyLength, maxLength)
       pendingResponse match {
         case Some(pr) => 
           if (pr.error(exception)) {

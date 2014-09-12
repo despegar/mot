@@ -55,7 +55,6 @@ class ClientConnector(val client: Client, val target: Address) extends Logging {
   thread.start()
   logger.debug(s"Creating connector: ${client.name}->$target")
 
-  def maxRequestLength() = currentConnection.map(_.maxLength).flatten
   def isConnected() = currentConnection.isDefined
   def lastConnectingError() = lastConnectingException
   def isErrorState() = lastConnectingException.isDefined
