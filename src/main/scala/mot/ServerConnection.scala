@@ -77,6 +77,8 @@ class ServerConnection(val server: Server, val socket: Socket) extends Logging {
       val delay = now - responder.expiration
       throw new TooLateException(delay)
     }
+    if (response.bodyLength > responseMaxLength.get)
+      throw new MessageTooLargeException(response.bodyLength, responseMaxLength.get)
     sendingQueue.put((responder.sequence, response))
   }
 
