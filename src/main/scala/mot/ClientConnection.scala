@@ -48,10 +48,6 @@ class ClientConnection(val connector: ClientConnector, val socket: Socket) exten
   def serverName() = serverHelloFuture.value.map(_.get.name)
   def requestMaxLength() = serverHelloFuture.value.map(_.get.maxLength)
     
-  @volatile var unrespondableSentCounter = 0L
-  @volatile var respondableSentCounter = 0L
-  @volatile var responsesReceivedCounter = 0L
-
   var lastMessage = 0L
   var msgSequence = 0
 
@@ -192,12 +188,12 @@ class ClientConnection(val connector: ClientConnector, val socket: Socket) exten
           // Message is respondable
           if (pr.markSent(this, msgSequence)) {
             // Message has not expired
-            respondableSentCounter += 1
+            connector.respondableSentCounter += 1
             doSendMessage(MessageFrame(true, pr.timeoutMs, msg.attributes, msg.bodyLength, msg.bodyParts))
           }
         case None =>
           // Message is unrespondable
-          unrespondableSentCounter += 1
+          connector.unrespondableSentCounter += 1
           doSendMessage(MessageFrame(false, 0, msg.attributes, msg.bodyLength, msg.bodyParts))
       }
     }

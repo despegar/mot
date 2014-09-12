@@ -41,7 +41,7 @@ class PendingResponse(val promise: Promise[Message], val timeoutMs: Int, val con
   def fulfill(message: Message): Unit = {
     unscheduleExpiration()
     if (promise.trySuccess(message)) {
-      withLock(sentLock)(mapReference.get.connection.responsesReceivedCounter += 1)
+      withLock(sentLock)(mapReference.get.connection.connector.responsesReceivedCounter += 1)
     }
   }
 

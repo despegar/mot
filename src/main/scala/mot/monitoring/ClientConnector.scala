@@ -42,9 +42,9 @@ class ClientConnector(context: Context) extends MultiCommandHandler {
         Col[Long]("KB-WRITTEN", 11, Alignment.Right),
         Col[Long]("BUF-FILLINGS", 12, Alignment.Right),
         Col[Long]("BUF-FULL", 11, Alignment.Right)) { printer =>
-          val unrespondableSent = Differ.fromVolatile(connection.unrespondableSentCounter _)
-          val respondableSent = Differ.fromVolatile(connection.respondableSentCounter _)
-          val responsesReceived = Differ.fromVolatile(connection.responsesReceivedCounter _)
+          val unrespondableSent = Differ.fromVolatile(connector.unrespondableSentCounter _)
+          val respondableSent = Differ.fromVolatile(connector.respondableSentCounter _)
+          val responsesReceived = Differ.fromVolatile(connector.responsesReceivedCounter _)
           val timeouts = Differ.fromVolatile(connector.timeoutsCounter _)
           val bytesRead = Differ.fromVolatile(connection.readBuffer.bytesCount)
           val bytesWriten = Differ.fromVolatile(connection.writeBuffer.bytesCount)
@@ -83,9 +83,9 @@ class ClientConnector(context: Context) extends MultiCommandHandler {
       "" +
         f"Sending queue size:                ${connector.sendingQueue.size}%11d\n" +
         f"Pending responses:                 ${connection.pendingResponses.size}%11d\n" +
-        f"Total unrespondable messages sent: ${connection.unrespondableSentCounter}%11d\n" +
-        f"Total respondable messages sent:   ${connection.respondableSentCounter}%11d\n" +
-        f"Total responses received:          ${connection.responsesReceivedCounter}%11d\n" +
+        f"Total unrespondable messages sent: ${connector.unrespondableSentCounter}%11d\n" +
+        f"Total respondable messages sent:   ${connector.respondableSentCounter}%11d\n" +
+        f"Total responses received:          ${connector.responsesReceivedCounter}%11d\n" +
         f"Total timed out messages:          ${connector.timeoutsCounter}%11d\n"
         f"Total bytes read:                  ${connection.readBuffer.bytesCount}%11d\n" +
         f"Total bytes written:               ${connection.writeBuffer.bytesCount}%11d\n" +
