@@ -42,11 +42,11 @@ class ClientConnection(val connector: ClientConnector, val socket: Socket) exten
 
   val closed = new AtomicBoolean
 
-  val serverHelloPromise = promise[ServerHello]
-  val serverHelloFuture = serverHelloPromise.future
+  private val serverHelloPromise = promise[ServerHello]
+  private val serverHelloFuture = serverHelloPromise.future
   
   def serverName() = serverHelloFuture.value.map(_.get.name)
-  def maxLength() = serverHelloFuture.value.map(_.get.maxLength)
+  def requestMaxLength() = serverHelloFuture.value.map(_.get.maxLength)
     
   @volatile var unrespondableSentCounter = 0L
   @volatile var respondableSentCounter = 0L

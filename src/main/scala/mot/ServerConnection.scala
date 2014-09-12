@@ -21,6 +21,9 @@ import mot.message.Response
 import Util.FunctionToRunnable
 import java.util.concurrent.atomic.AtomicLong
 import scala.collection.immutable
+import scala.concurrent.promise
+import scala.concurrent.Await
+import scala.concurrent.duration.Duration
 
 class ServerConnection(val server: Server, val socket: Socket) extends Logging {
 
@@ -39,13 +42,16 @@ class ServerConnection(val server: Server, val socket: Socket) extends Logging {
   @volatile var sequence = 0
   var lastMessage = 0L
 
-  @volatile var maxLength: Option[Int] = None
-  @volatile var clientName: Option[String] = None
+  private val clientHelloPromise = promise[ClientHello]
+  private val clientHelloFuture = clientHelloPromise.future 
 
   @volatile var receivedRespondable = 0L
   @volatile var receivedUnrespondable = 0L
   @volatile var sentResponses = 0L
   @volatile var tooLateResponses = 0L
+
+  def clientName() = clientHelloFuture.value.map(_.get.sender)
+  def responseMaxLength() = clientHelloFuture.value.map(_.get.maxLength)
   
   logger.info("Accepted connection from " + from)
   
@@ -82,9 +88,10 @@ class ServerConnection(val server: Server, val socket: Socket) extends Logging {
 
   def writerLoop() = {
     try {
-      val serverHello = ServerHello(protocolVersion = 1, server.name, maxLength = Short.MaxValue)
+      val serverHello = ServerHello(protocolVersion = 1, server.name, maxLength = server.requestMaxLength)
       logger.trace("Sending " + serverHello)
       serverHello.writeToBuffer(writeBuffer)
+      val clientHello = Await.result(clientHelloFuture, Duration.Inf)
       while (!finalized.get) {
         val outRes = sendingQueue.poll(200, TimeUnit.MILLISECONDS)
         if (outRes != null) {
@@ -167,8 +174,7 @@ class ServerConnection(val server: Server, val socket: Socket) extends Logging {
     // TODO: Ver de tolerar versiones nuevas
     if (helloMessage.protocolVersion > Protocol.ProtocolVersion)
       throw new UncompatibleProtocolVersion(s"read ${helloMessage.protocolVersion}, must be ${Protocol.ProtocolVersion}")
-    clientName = Some(helloMessage.sender)
-    maxLength = Some(helloMessage.maxLength)
+    clientHelloPromise.success(helloMessage)
   }
 
   def processMessage(now: Long, frame: MessageFrame) = {
@@ -181,7 +187,7 @@ class ServerConnection(val server: Server, val socket: Socket) extends Logging {
       None
     }
     val message = Message(frame.attributes, body :: Nil  /* use :: to avoid mutable builders */)
-    val incomingMessage = IncomingMessage(responder, from, clientName.get, maxLength.get, message)
+    val incomingMessage = IncomingMessage(responder, from, clientName.get, server.requestMaxLength, message)
     sequence += 1
     offer(server.receivingQueue, incomingMessage, finalized)
   }
