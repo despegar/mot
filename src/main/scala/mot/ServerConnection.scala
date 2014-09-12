@@ -121,7 +121,7 @@ class ServerConnection(val server: Server, val socket: Socket) extends Logging {
   }
 
   def sendMessage(sequence: Int, msg: Message) = {
-    val response = Response(sequence, msg.attributes, msg.bodyParts)
+    val response = Response(sequence, msg.attributes, msg.bodyLength, msg.bodyParts)
     logger.trace("Sending " + response)
     response.writeToBuffer(writeBuffer)
     sentResponses += 1

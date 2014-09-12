@@ -29,3 +29,5 @@ class BadDataException(msg: String) extends Exception(msg)
 
 class UncompatibleProtocolVersion(message: String) extends Exception(message)
 
+class MessageTooLargeException(size: Int, maxSize: Int) 
+  extends Exception(s"Message is bigger than the maximum allowed by the other party ($size > $maxSize)")

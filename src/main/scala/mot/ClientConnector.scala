@@ -39,6 +39,8 @@ class ClientConnector(val client: Client, val target: Address) extends Logging {
   // It need not be atomic as the expirator has only one thread
   @volatile var timeoutsCounter = 0L
 
+  @volatile var triedToSendTooLargeMessage = 0L
+  
   val promiseExpirator = {
     val tf = new ThreadFactory {
       def newThread(r: Runnable) =

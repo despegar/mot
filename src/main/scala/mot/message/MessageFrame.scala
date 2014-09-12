@@ -12,6 +12,7 @@ case class MessageFrame(
     respondable: Boolean,
     timeout: Int,
     attributes: immutable.Seq[(String, Array[Byte])], 
+    bodyLength: Int,
     bodyParts: immutable.Seq[ByteBuffer]) extends MessageBase {
 
   def writeToBuffer(writeBuffer: WriteBuffer) = {
@@ -19,7 +20,7 @@ case class MessageFrame(
     writeBuffer.put(respondable.toByte)
     writeBuffer.putInt(timeout)
     MessageBase.writeAttributes(writeBuffer, attributes)
-    MessageBase.writeIntSizeByteMultiField(writeBuffer, bodyParts)
+    MessageBase.writeIntSizeByteMultiField(writeBuffer, bodyLength, bodyParts)
   }
   
   override def toString() = {
@@ -39,7 +40,7 @@ object MessageFrame {
       throw new BadDataException("Received non-zero timeout value for a non-respondable message: " + timeout)
     val attributes = MessageBase.readAttributes(readBuffer)
     val body = MessageBase.readIntSizeByteField(readBuffer, maxLength)
-    MessageFrame(respondable, timeout, attributes, ByteBuffer.wrap(body) :: Nil /* use :: to avoid mutable builders */)
+    MessageFrame(respondable, timeout, attributes, body.length, ByteBuffer.wrap(body) :: Nil /* use :: to avoid mutable builders */)
   }
 
 }

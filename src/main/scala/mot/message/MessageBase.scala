@@ -88,9 +88,7 @@ object MessageBase {
     writeBuffer.put(array)
   }
   
-  def writeIntSizeByteMultiField(writeBuffer: WriteBuffer, buffers: immutable.Seq[ByteBuffer]) = {
-    // avoid the intermediate collection that map + sum would produce
-    val length = buffers.foldLeft(0)(_ + _.limit) 
+  def writeIntSizeByteMultiField(writeBuffer: WriteBuffer, length: Int, buffers: immutable.Seq[ByteBuffer]) = {
     writeBuffer.putInt(length)
     buffers.foreach(b => writeBuffer.put(b.array, b.arrayOffset, b.limit))
   }

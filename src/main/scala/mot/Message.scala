@@ -18,6 +18,9 @@ case class Message private[mot] (attributes: immutable.Seq[(String, Array[Byte])
       throw new Exception("Message has not exactly one part")   
   } 
   
+  // avoid the intermediate collection that map + sum would produce
+  val bodyLength = bodyParts.foldLeft(0)(_ + _.limit)
+  
 }
 
 object Message {

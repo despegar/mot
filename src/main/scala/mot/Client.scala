@@ -110,7 +110,7 @@ class Client(
   }
   
   def sendRequestAndWait(target: Address, message: Message, timeout: Int) =
-    Await.result(sendRequest(target, message, timeout), Duration(timeout, TimeUnit.MILLISECONDS))
+    Await.result(sendRequest(target, message, timeout), Duration.Inf /* future will timeout */)
   
   def sendMessage(target: Address, message: Message) = {
     checkClosed()

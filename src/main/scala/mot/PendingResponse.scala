@@ -45,6 +45,11 @@ class PendingResponse(val promise: Promise[Message], val timeoutMs: Int, val con
     }
   }
 
+  def error(error: Exception) = {
+    unscheduleExpiration()
+    promise.tryFailure(error)
+  }
+  
   def timeout(): Unit = {
     if (promise.tryFailure(new ResponseTimeoutException))
       connector.timeoutsCounter += 1

@@ -163,19 +163,37 @@ class ClientConnection(val connector: ClientConnector, val socket: Socket) exten
     }
   }
 
-  private def sendMessage(now: Long, message: Message, pendingResponse: Option[PendingResponse]) {
-    pendingResponse match {
-      case Some(pr) =>
-        // Message is respondable
-        if (pr.markSent(this, msgSequence)) {
-          // Message has not expired
-          respondableSentCounter += 1
-          doSendMessage(MessageFrame(true, pr.timeoutMs, message.attributes, message.bodyParts))
-        }
-      case None =>
-        // Message is unrespondable
-        unrespondableSentCounter += 1
-        doSendMessage(MessageFrame(false, 0, message.attributes, message.bodyParts))
+  private def sendMessage(now: Long, msg: Message, pendingResponse: Option[PendingResponse]) {
+    if (msg.bodyLength > maxLength.get) {
+    /* 
+     * The client is trying to send a message larger than the maximum allowed by the server. If the message is respondable
+     * it is possible to let the client know using the promise. If the message is unrespondable, the only thing we can do
+     * is log the error.
+     */ 
+      val exception = new MessageTooLargeException(msg.bodyLength, maxLength.get)
+      pendingResponse match {
+        case Some(pr) => 
+          if (pr.error(exception)) {
+            // condition is true when timeout did not "win"
+            connector.triedToSendTooLargeMessage += 1
+          }
+        case None => logger.info(exception.getMessage)
+          connector.triedToSendTooLargeMessage += 1
+      }
+    } else {
+      pendingResponse match {
+        case Some(pr) =>
+          // Message is respondable
+          if (pr.markSent(this, msgSequence)) {
+            // Message has not expired
+            respondableSentCounter += 1
+            doSendMessage(MessageFrame(true, pr.timeoutMs, msg.attributes, msg.bodyLength, msg.bodyParts))
+          }
+        case None =>
+          // Message is unrespondable
+          unrespondableSentCounter += 1
+          doSendMessage(MessageFrame(false, 0, msg.attributes, msg.bodyLength, msg.bodyParts))
+      }
     }
   }
 
