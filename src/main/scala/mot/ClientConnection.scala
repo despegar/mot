@@ -39,16 +39,15 @@ class ClientConnection(val connector: ClientConnector, val socket: Socket) exten
 
   val closed = new AtomicBoolean
 
-  // Need to be volatile as they are read by monitoring threads
-  @volatile var maxLength = -1
-  @volatile var serverName: String = _
-
-  var lastMessage = 0L
-  var msgSequence = 0
+  @volatile var maxLength: Option[Int] = None
+  @volatile var serverName: Option[String] = None
 
   @volatile var unrespondableSentCounter = 0L
   @volatile var respondableSentCounter = 0L
   @volatile var responsesReceivedCounter = 0L
+
+  var lastMessage = 0L
+  var msgSequence = 0
 
   def isClosed() = closed.get
 
@@ -112,8 +111,8 @@ class ClientConnection(val connector: ClientConnector, val socket: Socket) exten
     // TODO: Ver de tolerar versiones nuevas
     if (serverHello.protocolVersion > Protocol.ProtocolVersion)
       throw new UncompatibleProtocolVersion(s"read ${serverHello.protocolVersion}, must be ${Protocol.ProtocolVersion}")
-    maxLength = serverHello.maxLength
-    serverName = serverHello.name
+    maxLength = Some(serverHello.maxLength)
+    serverName = Some(serverHello.name)
   }
 
   def processMessage(now: Long, response: Response) = {

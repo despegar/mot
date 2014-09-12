@@ -21,7 +21,7 @@ class ServerConnections(context: Context) extends SimpleCommandHandler {
         for (server <- context.servers.values; conn <- server.connections.values) {
           printer(
             server.name,
-            conn.clientName,
+            conn.clientName.getOrElse("-"),
             conn.from.toString,
             conn.sendingQueue.size)
         }

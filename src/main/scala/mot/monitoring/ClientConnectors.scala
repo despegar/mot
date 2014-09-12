@@ -30,11 +30,11 @@ class ClientConnectors(context: Context) extends SimpleCommandHandler {
               (
                 conn.socket.getLocalAddress.getHostAddress + ":" + conn.socket.getLocalPort,
                 conn.socket.getInetAddress.getHostAddress + ":" + conn.socket.getPort,
-                Option(conn.serverName).getOrElse("-"),
+                conn.serverName,
                 conn.maxLength,
                 conn.pendingResponses.size)
             case None =>
-              ("-", "-", "-", -1, 0)
+              ("-", "-", None, None, 0)
           }
           printer(
             client.name,
@@ -42,8 +42,8 @@ class ClientConnectors(context: Context) extends SimpleCommandHandler {
             connector.sendingQueue.size,
             local,
             remote,
-            serverName,
-            maxLength,
+            serverName.getOrElse("-"),
+            maxLength.getOrElse(-1),
             pending,
             lastError)
         }

@@ -39,12 +39,13 @@ class ServerConnection(val server: Server, val socket: Socket) extends Logging {
   @volatile var sequence = 0
   var lastMessage = 0L
 
-  var clientName: String = _
+  @volatile var maxLength: Option[Int] = None
+  @volatile var clientName: Option[String] = None
 
   @volatile var receivedRespondable = 0L
   @volatile var receivedUnrespondable = 0L
   @volatile var sentResponses = 0L
-  val tooLateResponses = new AtomicLong
+  @volatile var tooLateResponses = 0L
   
   logger.info("Accepted connection from " + from)
   
@@ -66,7 +67,7 @@ class ServerConnection(val server: Server, val socket: Socket) extends Logging {
   def sendResponse(responder: Responder, response: Message) = {
     val now = System.nanoTime()
     if (!responder.isOnTime(now)) {
-      tooLateResponses.incrementAndGet()
+      tooLateResponses += 1
       val delay = now - responder.expiration
       throw new TooLateException(delay)
     }
@@ -166,7 +167,8 @@ class ServerConnection(val server: Server, val socket: Socket) extends Logging {
     // TODO: Ver de tolerar versiones nuevas
     if (helloMessage.protocolVersion > Protocol.ProtocolVersion)
       throw new UncompatibleProtocolVersion(s"read ${helloMessage.protocolVersion}, must be ${Protocol.ProtocolVersion}")
-    clientName = helloMessage.sender
+    clientName = Some(helloMessage.sender)
+    maxLength = Some(helloMessage.maxLength)
   }
 
   def processMessage(now: Long, message: MessageFrame) = {
@@ -179,7 +181,7 @@ class ServerConnection(val server: Server, val socket: Socket) extends Logging {
       None
     }
     val incomingMessage =
-      IncomingMessage(responder, from, clientName, Message(message.attributes, body :: Nil  /* use :: to avoid mutable builders */))
+      IncomingMessage(responder, from, clientName.get, Message(message.attributes, body :: Nil  /* use :: to avoid mutable builders */))
     sequence += 1
     offer(server.receivingQueue, incomingMessage, finalized)
   }
