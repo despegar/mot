@@ -30,8 +30,8 @@ class ServerConnection(val server: Server, val socket: Socket) extends Logging {
 
   val sendingQueue = new LinkedBlockingQueue[(Int, Message)](server.sendingQueueSize)
 
-  val readerThread = new Thread(readerLoop _, s"mot[${server.name}]-reader-for-${from}")
-  val writerThread = new Thread(writerLoop _, s"mot[${server.name}]-writer-for-${from}")
+  val readerThread = new Thread(readerLoop _, s"mot(${server.name})-reader-for-${from}")
+  val writerThread = new Thread(writerLoop _, s"mot(${server.name})-writer-for-${from}")
 
   val readBuffer = new ReadBuffer(socket.getInputStream, server.readerBufferSize)
   val writeBuffer = new WriteBuffer(socket.getOutputStream, server.writerBufferSize)
