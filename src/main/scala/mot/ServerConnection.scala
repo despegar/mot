@@ -171,17 +171,17 @@ class ServerConnection(val server: Server, val socket: Socket) extends Logging {
     maxLength = Some(helloMessage.maxLength)
   }
 
-  def processMessage(now: Long, message: MessageFrame) = {
-    val body = message.bodyParts.head // Incoming messages only have one part
-    val responder = if (message.respondable) {
+  def processMessage(now: Long, frame: MessageFrame) = {
+    val body = frame.bodyParts.head // Incoming messages only have one part
+    val responder = if (frame.respondable) {
       receivedRespondable += 1
-      Some(new Responder(handler, sequence, now, message.timeout))
+      Some(new Responder(handler, sequence, now, frame.timeout))
     } else {
       receivedUnrespondable += 1
       None
     }
-    val incomingMessage =
-      IncomingMessage(responder, from, clientName.get, Message(message.attributes, body :: Nil  /* use :: to avoid mutable builders */))
+    val message = Message(frame.attributes, body :: Nil  /* use :: to avoid mutable builders */)
+    val incomingMessage = IncomingMessage(responder, from, clientName.get, maxLength.get, message)
     sequence += 1
     offer(server.receivingQueue, incomingMessage, finalized)
   }
