@@ -93,6 +93,7 @@ class ServerConnection(val server: Server, val socket: Socket) extends Logging {
       val serverHello = ServerHello(protocolVersion = 1, server.name, maxLength = server.requestMaxLength)
       logger.trace("Sending " + serverHello)
       serverHello.writeToBuffer(writeBuffer)
+      writeBuffer.flush()
       val clientHello = Await.result(clientHelloFuture, Duration.Inf)
       while (!finalized.get) {
         val outRes = sendingQueue.poll(200, TimeUnit.MILLISECONDS)

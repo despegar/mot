@@ -131,6 +131,7 @@ class ClientConnection(val connector: ClientConnector, val socket: Socket) exten
       val clientHello = ClientHello(1, connector.client.name, Short.MaxValue)
       logger.trace("Sending " + clientHello)
       clientHello.writeToBuffer(writeBuffer)
+      writeBuffer.flush()
       val serverHello = Await.result(serverHelloFuture, Duration.Inf)
       while (!closed.get) {
         val dequeued = Option(connector.sendingQueue.poll(200, TimeUnit.MILLISECONDS))
