@@ -38,6 +38,7 @@ class ClientConnector(context: Context) extends MultiCommandHandler {
         Col[Long]("SENT-RESP", 11, Alignment.Right),
         Col[Long]("RESP-RCVD", 11, Alignment.Right),
         Col[Long]("TIMEOUTS", 11, Alignment.Right),
+        Col[Long]("SND-TOO-BIG", 11, Alignment.Right),
         Col[Long]("KB-READ", 11, Alignment.Right),
         Col[Long]("KB-WRITTEN", 11, Alignment.Right),
         Col[Long]("BUF-FILLINGS", 12, Alignment.Right),
@@ -46,6 +47,7 @@ class ClientConnector(context: Context) extends MultiCommandHandler {
           val respondableSent = Differ.fromVolatile(connector.respondableSentCounter _)
           val responsesReceived = Differ.fromVolatile(connector.responsesReceivedCounter _)
           val timeouts = Differ.fromVolatile(connector.timeoutsCounter _)
+          val sendTooLarge = Differ.fromVolatile(connector.triedToSendTooLargeMessage _)
           val bytesRead = Differ.fromVolatile(connection.readBuffer.bytesCount)
           val bytesWriten = Differ.fromVolatile(connection.writeBuffer.bytesCount)
           val fillings = Differ.fromVolatile(connection.readBuffer.readCount)
@@ -61,6 +63,7 @@ class ClientConnector(context: Context) extends MultiCommandHandler {
               respondableSent.diff(),
               responsesReceived.diff(),
               timeouts.diff(),
+              sendTooLarge.diff(),
               bytesRead.diff() /^ 1024,
               bytesWriten.diff() /^ 1024,
               fillings.diff(),
@@ -81,16 +84,17 @@ class ClientConnector(context: Context) extends MultiCommandHandler {
       }
       val connection = connector.currentConnection.getOrElse(return "Not currently connected")
       "" +
-        f"Sending queue size:                ${connector.sendingQueue.size}%11d\n" +
-        f"Pending responses:                 ${connection.pendingResponses.size}%11d\n" +
-        f"Total unrespondable messages sent: ${connector.unrespondableSentCounter}%11d\n" +
-        f"Total respondable messages sent:   ${connector.respondableSentCounter}%11d\n" +
-        f"Total responses received:          ${connector.responsesReceivedCounter}%11d\n" +
-        f"Total timed out messages:          ${connector.timeoutsCounter}%11d\n"
-        f"Total bytes read:                  ${connection.readBuffer.bytesCount}%11d\n" +
-        f"Total bytes written:               ${connection.writeBuffer.bytesCount}%11d\n" +
-        f"Total buffer fillings:             ${connection.readBuffer.readCount}%11d\n" +
-        f"Total full buffer fillings:        ${connection.readBuffer.bufferFullCount}%11d\n"
+        f"Sending queue size:                  ${connector.sendingQueue.size}%11d\n" +
+        f"Pending responses:                   ${connection.pendingResponses.size}%11d\n" +
+        f"Total unrespondable messages sent:   ${connector.unrespondableSentCounter}%11d\n" +
+        f"Total respondable messages sent:     ${connector.respondableSentCounter}%11d\n" +
+        f"Total responses received:            ${connector.responsesReceivedCounter}%11d\n" +
+        f"Total timed out messages:            ${connector.timeoutsCounter}%11d\n"
+        f"Total too large msgs. tried to send: ${connector.triedToSendTooLargeMessage}%11d\n"
+        f"Total bytes read:                    ${connection.readBuffer.bytesCount}%11d\n" +
+        f"Total bytes written:                 ${connection.writeBuffer.bytesCount}%11d\n" +
+        f"Total buffer fillings:               ${connection.readBuffer.readCount}%11d\n" +
+        f"Total full buffer fillings:          ${connection.readBuffer.bufferFullCount}%11d\n"
     }
   }
 

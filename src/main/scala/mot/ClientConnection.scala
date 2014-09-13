@@ -120,7 +120,9 @@ class ClientConnection(val connector: ClientConnector, val socket: Socket) exten
     val body = response.bodyParts.head // Incoming messages only have one part
     Option(pendingResponses.remove(response.requestReference)) match {
       case Some(pendingResponse) =>
-        pendingResponse.fulfill(Message(response.attributes, body :: Nil /* use :: to avoid mutable builders */ ))
+        val msg = Message(response.attributes, body :: Nil /* use :: to avoid mutable builders */ )
+        if (pendingResponse.fulfill(msg))
+          connector.responsesReceivedCounter += 1
       case None =>
         logger.trace("Unexpected response arrived (probably expired and then collected): " + response)
     }

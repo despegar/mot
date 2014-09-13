@@ -48,7 +48,8 @@ class ServerConnection(val server: Server, val socket: Socket) extends Logging {
   @volatile var receivedRespondable = 0L
   @volatile var receivedUnrespondable = 0L
   @volatile var sentResponses = 0L
-  @volatile var tooLateResponses = 0L
+  val tooLateResponses = new AtomicLong 
+  val tooLargeResponses = new AtomicLong
 
   def clientName() = clientHelloFuture.value.map(_.get.sender)
   def responseMaxLength() = clientHelloFuture.value.map(_.get.maxLength)
@@ -63,7 +64,7 @@ class ServerConnection(val server: Server, val socket: Socket) extends Logging {
 
   def finalize(e: Throwable) {
     if (finalized.compareAndSet(false, true)) {
-      logger.debug("Finalizing server connection from ")
+      logger.debug(s"Finalizing server connection from $from")
       handler.reportError(e)
       Util.closeSocket(socket)
       server.connections.remove(from)
@@ -73,12 +74,14 @@ class ServerConnection(val server: Server, val socket: Socket) extends Logging {
   def sendResponse(responder: Responder, response: Message) = {
     val now = System.nanoTime()
     if (!responder.isOnTime(now)) {
-      tooLateResponses += 1
+      tooLateResponses.incrementAndGet()
       val delay = now - responder.expiration
       throw new TooLateException(delay)
     }
-    if (response.bodyLength > responseMaxLength.get)
+    if (response.bodyLength > responseMaxLength.get) {
+      tooLargeResponses.incrementAndGet()
       throw new MessageTooLargeException(response.bodyLength, responseMaxLength.get)
+    }
     sendingQueue.put((responder.sequence, response))
   }
 
@@ -104,6 +107,7 @@ class ServerConnection(val server: Server, val socket: Socket) extends Logging {
            * Note that it is not necessary to check for timeouts, as it was already checked when the response
            * was enqueued, and there is no flow control in responses, everything is delivered as it arrives,
            * so messages do not spend too much time in the queue.
+           * Additionally, message length is also not checked here, as that was already done before enqueuing
            */
           sendMessage(seq, msg)
           if (sendingQueue.isEmpty)

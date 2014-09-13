@@ -36,6 +36,7 @@ class ServerConnection(context: Context) extends MultiCommandHandler {
         Col[Long]("RCV-UNRESP", 11, Alignment.Right),
         Col[Long]("SENT-RESP", 11, Alignment.Right),
         Col[Long]("TOO-LATE", 11, Alignment.Right),
+        Col[Long]("TOO-LARGE", 11, Alignment.Right),
         Col[Long]("KB-READ", 11, Alignment.Right),
         Col[Long]("KB-WRITTEN", 11, Alignment.Right),
         Col[Long]("BUF-FILLINGS", 12, Alignment.Right),
@@ -43,7 +44,8 @@ class ServerConnection(context: Context) extends MultiCommandHandler {
           val respondable = Differ.fromVolatile(connection.receivedRespondable _)
           val unrespondable = Differ.fromVolatile(connection.receivedUnrespondable _)
           val sent = Differ.fromVolatile(connection.sentResponses _)
-          val tooLate = Differ.fromVolatile(connection.tooLateResponses _)
+          val tooLate = Differ.fromAtomic(connection.tooLateResponses)
+          val tooLarge = Differ.fromAtomic(connection.tooLargeResponses)
           val bytesRead = Differ.fromVolatile(connection.readBuffer.bytesCount)
           val bytesWriten = Differ.fromVolatile(connection.writeBuffer.bytesCount)
           val fillings = Differ.fromVolatile(connection.readBuffer.readCount)
@@ -56,6 +58,7 @@ class ServerConnection(context: Context) extends MultiCommandHandler {
               unrespondable.diff(),
               sent.diff(),
               tooLate.diff(),
+              tooLarge.diff(),
               bytesRead.diff() /^ 1024,
               bytesWriten.diff() /^ 1024,
               fillings.diff(),
@@ -79,7 +82,8 @@ class ServerConnection(context: Context) extends MultiCommandHandler {
         f"Received respondable:         ${connection.receivedRespondable}%11d\n" +
         f"Received unrespondable:       ${connection.receivedUnrespondable}%11d\n" +
         f"Sent responses:               ${connection.sentResponses}%11d\n" +
-        f"Responses producted too late: ${connection.tooLateResponses}%11d\n" +
+        f"Responses producted too late: ${connection.tooLateResponses.get}%11d\n" +
+        f"Responses too large:          ${connection.tooLargeResponses.get}%11d\n" +
         f"Total bytes read:             ${connection.readBuffer.bytesCount}%11d\n" +
         f"Total bytes written:          ${connection.writeBuffer.bytesCount}%11d\n" +
         f"Total buffer fillings:        ${connection.readBuffer.readCount}%11d\n" +

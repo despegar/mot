@@ -12,18 +12,17 @@ class PendingResponse(val promise: Promise[Message], val timeoutMs: Int, val con
 
   private val sentLock = new ReentrantLock
 
-  @volatile var expirationTask: Option[ScheduledFuture[_]] = None
+  @volatile var expirationTask: ScheduledFuture[_] = _
   
   // Guarded by sentLock
   var mapReference: Option[PendingResponse.MapReference] = None
 
   def scheduleExpiration() = {
-    expirationTask = Some(connector.promiseExpirator.schedule(timeout _, timeoutMs, TimeUnit.MILLISECONDS))
+    expirationTask = connector.promiseExpirator.schedule(timeout _, timeoutMs, TimeUnit.MILLISECONDS)
   }
 
   def unscheduleExpiration() = {
-    expirationTask.foreach(_.cancel(false /* mayInterruptIfRunning */ ))
-    expirationTask = None
+    expirationTask.cancel(false /* mayInterruptIfRunning */ )
   }
 
   def markSent(connection: ClientConnection, sequence: Int) = {
@@ -37,18 +36,6 @@ class PendingResponse(val promise: Promise[Message], val timeoutMs: Int, val con
       }
     }
   }
-
-  def fulfill(message: Message): Unit = {
-    unscheduleExpiration()
-    if (promise.trySuccess(message)) {
-      withLock(sentLock)(mapReference.get.connection.connector.responsesReceivedCounter += 1)
-    }
-  }
-
-  def error(error: Exception) = {
-    unscheduleExpiration()
-    promise.tryFailure(error)
-  }
   
   def timeout(): Unit = {
     if (promise.tryFailure(new ResponseTimeoutException))
@@ -56,6 +43,16 @@ class PendingResponse(val promise: Promise[Message], val timeoutMs: Int, val con
     withLock(sentLock) {
       mapReference.foreach(ref => ref.connection.pendingResponses.remove(ref.sequence))
     }
+  }
+
+  def fulfill(message: Message) = {
+    unscheduleExpiration()
+    promise.trySuccess(message)
+  }
+
+  def error(error: Exception) = {
+    unscheduleExpiration()
+    promise.tryFailure(error)
   }
 
 }
