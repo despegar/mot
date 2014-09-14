@@ -28,6 +28,7 @@ import scala.concurrent.duration.Duration
 class ServerConnection(val server: Server, val socket: Socket) extends Logging {
 
   val from = Address(socket.getInetAddress.getHostAddress, socket.getPort)
+  
   val finalized = new AtomicBoolean
   val handler = new ServerConnectionHandler(this)
 
@@ -82,7 +83,14 @@ class ServerConnection(val server: Server, val socket: Socket) extends Logging {
       tooLargeResponses.incrementAndGet()
       throw new MessageTooLargeException(response.bodyLength, responseMaxLength.get)
     }
-    sendingQueue.put((responder.sequence, response))
+    /*
+     * It is possible that the connection was closed after the previous check, so block looping and report the eventual close.
+     */
+    var enqueued = false
+    while (!enqueued && !finalized.get)
+      enqueued = sendingQueue.offer((responder.sequence, response), 100, TimeUnit.MILLISECONDS)
+    if (!enqueued)
+      throw new InvalidServerConnectionException(handler.exception)
   }
 
   def close() = {
