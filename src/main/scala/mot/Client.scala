@@ -52,7 +52,7 @@ class Client(
         while (it.hasNext) {
           val entry = it.next
           val (target, connector) = (entry.getKey, entry.getValue)
-          if (connector.lastUse < threshold) {
+          if (connector.lastUse < threshold && connector.sendingQueue.isEmpty) {
             it.remove()
             connector.close()
           }
