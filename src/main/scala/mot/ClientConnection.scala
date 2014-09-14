@@ -41,7 +41,7 @@ class ClientConnection(val connector: ClientConnector, val socket: Socket) exten
       3 /* concurrency level: one thread adding values, one removing, one expiring */ )
 
   val closed = new AtomicBoolean
-
+  
   private val serverHelloPromise = promise[ServerHello]
   private val serverHelloFuture = serverHelloPromise.future
   
@@ -89,7 +89,7 @@ class ClientConnection(val connector: ClientConnector, val socket: Socket) exten
         val now = System.nanoTime()
         message match {
           case _: Heartbeat => // pass
-          case response: Response => processMessage(now, response)
+          case response: Response => processMessage(response)
           case any => throw new BadDataException("Unexpected message type: " + any.getClass.getName)
         }
       }
@@ -116,7 +116,7 @@ class ClientConnection(val connector: ClientConnector, val socket: Socket) exten
     serverHelloPromise.success(serverHello)
   }
 
-  def processMessage(now: Long, response: Response) = {
+  def processMessage(response: Response) = {
     val body = response.bodyParts.head // Incoming messages only have one part
     Option(pendingResponses.remove(response.requestReference)) match {
       case Some(pendingResponse) =>
