@@ -1,8 +1,9 @@
 package mot
 
 import Util.FunctionToRunnable
+import com.typesafe.scalalogging.slf4j.Logging
 
-object TestServer {
+object TestServer extends Logging {
 
   def main(args: Array[String]) = {
     val ctx = new Context(4002)
@@ -12,8 +13,11 @@ object TestServer {
     def receive() = {
       while (true) {
         val msg = server.receive()
-        if (msg.isRespondible)
-          msg.responder.get.sendResponse(response)
+        try {
+          msg.responder.foreach(_.sendResponse(response))
+        } catch {
+          case e: Exception => logger.info("Cannot send response", e)
+        }
       }
     }
     val serverThread1 = new Thread(receive _, "server-thread-1").start()
