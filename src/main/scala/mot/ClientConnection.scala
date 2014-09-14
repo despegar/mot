@@ -137,13 +137,12 @@ class ClientConnection(val connector: ClientConnector, val socket: Socket) exten
       val serverHello = Await.result(serverHelloFuture, Duration.Inf)
       while (!closed.get) {
         val dequeued = Option(connector.sendingQueue.poll(200, TimeUnit.MILLISECONDS))
-        val now = System.nanoTime()
         dequeued match {
           case Some((message, optionalPromise)) =>
             /*
              * There was something in the queue
              */
-            sendMessage(now, message, optionalPromise, serverHello.maxLength)
+            sendMessage(message, optionalPromise, serverHello.maxLength)
             if (connector.sendingQueue.isEmpty)
               writeBuffer.flush()
           case None =>
@@ -152,6 +151,7 @@ class ClientConnection(val connector: ClientConnector, val socket: Socket) exten
              * The purpose of heart beats is to keep the wire active where there are no messages.
              * This is useful for detecting dropped connections and avoiding read timeouts in the other side.
              */
+            val now = System.nanoTime()
             if (now - lastMessage >= Protocol.HeartBeatIntervalNs) {
               val heartbeat = Heartbeat()
               logger.trace("Sending " + heartbeat)
@@ -168,7 +168,7 @@ class ClientConnection(val connector: ClientConnector, val socket: Socket) exten
     }
   }
 
-  private def sendMessage(now: Long, msg: Message, pendingResponse: Option[PendingResponse], maxLength: Int) {
+  private def sendMessage(msg: Message, pendingResponse: Option[PendingResponse], maxLength: Int) {
     if (msg.bodyLength > maxLength) {
     /* 
      * The client is trying to send a message larger than the maximum allowed by the server. If the message is respondable
