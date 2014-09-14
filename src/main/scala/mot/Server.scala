@@ -34,7 +34,7 @@ class Server(
   val bindPort: Int,
   val bindAddress: InetAddress = InetAddress.getByName("0.0.0.0"),
   val requestMaxLength: Int = 100000,
-  val receivingQueueSize: Int = 1000,
+  val receivingQueueSize: Int = 5000,
   val sendingQueueSize: Int = 5000,
   val readerBufferSize: Int = 10000,
   val writerBufferSize: Int = 2000) extends Logging {

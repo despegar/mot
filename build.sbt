@@ -26,6 +26,6 @@ fork := true
 
 connectInput := true
 
-javaOptions  ++= Seq("-Xmx900m", "-Xms900m", "-XX:NewSize=850m")
+javaOptions  ++= Seq("-Xmx1900m", "-Xms1900m", "-XX:NewSize=1800m")
 
 outputStrategy := Some(StdoutOutput)

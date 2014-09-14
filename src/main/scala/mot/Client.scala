@@ -25,7 +25,7 @@ class Client(
   val context: Context,
   val name: String,
   val responseMaxLength: Int = 100000,
-  val queueSize: Int = 1000,
+  val queueSize: Int = 5000,
   val readerBufferSize: Int = 10000,
   val writerBufferSize: Int = 2000,
   val connectTimeout: Int = 3000,
