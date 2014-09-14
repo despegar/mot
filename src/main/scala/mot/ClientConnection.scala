@@ -26,6 +26,8 @@ import scala.collection.immutable
 import scala.concurrent.promise
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
+import scala.concurrent.Future
+import java.util.concurrent.TimeoutException
 
 class ClientConnection(val connector: ClientConnector, val socket: Socket) extends Logging {
 
@@ -41,13 +43,13 @@ class ClientConnection(val connector: ClientConnector, val socket: Socket) exten
       3 /* concurrency level: one thread adding values, one removing, one expiring */ )
 
   val closed = new AtomicBoolean
-  
+
   private val serverHelloPromise = promise[ServerHello]
   private val serverHelloFuture = serverHelloPromise.future
-  
+
   def serverName() = serverHelloFuture.value.map(_.get.name)
   def requestMaxLength() = serverHelloFuture.value.map(_.get.maxLength)
-    
+
   var lastMessage = 0L
   var msgSequence = 0
 
@@ -134,7 +136,7 @@ class ClientConnection(val connector: ClientConnector, val socket: Socket) exten
       logger.trace("Sending " + clientHello)
       clientHello.writeToBuffer(writeBuffer)
       writeBuffer.flush()
-      val serverHello = Await.result(serverHelloFuture, Duration.Inf)
+      val serverHello = Protocol.wait(serverHelloFuture, stop = closed).getOrElse(throw new ClientClosedException)
       while (!closed.get) {
         val dequeued = Option(connector.sendingQueue.poll(200, TimeUnit.MILLISECONDS))
         dequeued match {
@@ -163,26 +165,30 @@ class ClientConnection(val connector: ClientConnector, val socket: Socket) exten
       }
     } catch {
       case e: IOException =>
-        logger.error("IO exception while writing. Possibly some messages got lost. Reconnecting.", e)
+        logger.error(s"IO exception while writing: ${e.getMessage()}. Possibly some messages got lost. Reconnecting.")
+        reportError(e)
+      case e: ClientClosedException =>
+        logger.error("client closed while writing. Possibly some messages got lost. Reconnecting.")
         reportError(e)
     }
   }
 
   private def sendMessage(msg: Message, pendingResponse: Option[PendingResponse], maxLength: Int) {
     if (msg.bodyLength > maxLength) {
-    /* 
+      /* 
      * The client is trying to send a message larger than the maximum allowed by the server. If the message is respondable
      * it is possible to let the client know using the promise. If the message is unrespondable, the only thing we can do
      * is log the error.
-     */ 
+     */
       val exception = new MessageTooLargeException(msg.bodyLength, maxLength)
       pendingResponse match {
-        case Some(pr) => 
+        case Some(pr) =>
           if (pr.error(exception)) {
             // condition is true when timeout did not "win"
             connector.triedToSendTooLargeMessage += 1
           }
-        case None => logger.info(exception.getMessage)
+        case None =>
+          logger.info(exception.getMessage)
           connector.triedToSendTooLargeMessage += 1
       }
     } else {

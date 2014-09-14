@@ -105,7 +105,7 @@ class ServerConnection(val server: Server, val socket: Socket) extends Logging {
       logger.trace("Sending " + serverHello)
       serverHello.writeToBuffer(writeBuffer)
       writeBuffer.flush()
-      val clientHello = Await.result(clientHelloFuture, Duration.Inf)
+      val clientHello = Protocol.wait(clientHelloFuture, stop = finalized).getOrElse(throw new ServerClosedException)
       while (!finalized.get) {
         val outRes = sendingQueue.poll(200, TimeUnit.MILLISECONDS)
         if (outRes != null) {
@@ -138,6 +138,9 @@ class ServerConnection(val server: Server, val socket: Socket) extends Logging {
     } catch {
       case e: IOException =>
         logger.info(s"IO exception writing: ${e.getMessage}. Possibly some responses got lost.")
+        finalize(e)
+      case e: ServerClosedException =>
+        logger.info(s"Server closed while writing. Possibly some responses got lost.")
         finalize(e)
     }
   }
