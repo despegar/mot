@@ -1,8 +1,8 @@
 package mot
 
-import com.typesafe.scalalogging.slf4j.Logging
+import com.typesafe.scalalogging.slf4j.StrictLogging
 
-object LoggingErrorHandler extends UncaughtErrorHandler with Logging {
+object LoggingErrorHandler extends UncaughtErrorHandler with StrictLogging {
 
   def handle(throwable: Throwable) = {
     logger.error(

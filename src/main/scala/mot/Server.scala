@@ -3,7 +3,6 @@ package mot
 import java.net.ServerSocket
 import Util.FunctionToRunnable
 import java.util.concurrent.TimeUnit
-import com.typesafe.scalalogging.slf4j.Logging
 import scala.util.control.NonFatal
 import java.util.concurrent.ConcurrentHashMap
 import collection.JavaConversions._
@@ -13,6 +12,7 @@ import Util.closeSocket
 import java.net.InetSocketAddress
 import java.nio.ByteBuffer
 import java.net.InetAddress
+import com.typesafe.scalalogging.slf4j.StrictLogging
 
 /**
  * The subscriber then accepts TCP connections from publishers. Flow control (i.e. reading judiciously)
@@ -37,7 +37,7 @@ class Server(
   val receivingQueueSize: Int = 5000,
   val sendingQueueSize: Int = 5000,
   val readerBufferSize: Int = 10000,
-  val writerBufferSize: Int = 2000) extends Logging {
+  val writerBufferSize: Int = 2000) extends StrictLogging {
 
   val serverSocket = new ServerSocket
   serverSocket.bind(new InetSocketAddress(bindAddress, bindPort))

@@ -1,7 +1,6 @@
 package mot
 
 import scala.concurrent.Promise
-import com.typesafe.scalalogging.slf4j.Logging
 import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.locks.ReentrantLock
 import java.util.concurrent.TimeUnit
@@ -9,8 +8,9 @@ import Util.FunctionToRunnable
 import Util.withLock
 import io.netty.util.Timeout
 import io.netty.util.TimerTask
+import com.typesafe.scalalogging.slf4j.StrictLogging
 
-class PendingResponse(val promise: Promise[Message], val timeoutMs: Int, val connector: ClientConnector) extends Logging {
+class PendingResponse(val promise: Promise[Message], val timeoutMs: Int, val connector: ClientConnector) extends StrictLogging {
 
   private val sentLock = new ReentrantLock
 

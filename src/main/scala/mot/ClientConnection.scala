@@ -1,6 +1,5 @@
 package mot
 
-import com.typesafe.scalalogging.slf4j.Logging
 import Util.FunctionToRunnable
 import mot.buffer.ReadBuffer
 import mot.message.MessageBase
@@ -28,8 +27,9 @@ import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 import scala.concurrent.Future
 import java.util.concurrent.TimeoutException
+import com.typesafe.scalalogging.slf4j.StrictLogging
 
-class ClientConnection(val connector: ClientConnector, val socket: Socket) extends Logging {
+class ClientConnection(val connector: ClientConnector, val socket: Socket) extends StrictLogging {
 
   val readBuffer = new ReadBuffer(socket.getInputStream, connector.client.readerBufferSize)
   val writeBuffer = new WriteBuffer(socket.getOutputStream, connector.client.writerBufferSize)

@@ -1,9 +1,9 @@
 package mot
 
 import Util.FunctionToRunnable
-import com.typesafe.scalalogging.slf4j.Logging
+import com.typesafe.scalalogging.slf4j.StrictLogging
 
-object TestServer extends Logging {
+object TestServer extends StrictLogging {
 
   def main(args: Array[String]) = {
     val ctx = new Context(4002)

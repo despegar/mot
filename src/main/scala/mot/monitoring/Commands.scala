@@ -1,6 +1,5 @@
 package mot.monitoring
 
-import com.typesafe.scalalogging.slf4j.Logging
 import java.net.ServerSocket
 import java.net.InetSocketAddress
 import mot.Util.FunctionToRunnable
@@ -11,8 +10,9 @@ import java.io.PrintStream
 import java.net.Socket
 import mot.Context
 import scala.collection.immutable
+import com.typesafe.scalalogging.slf4j.StrictLogging
 
-class Commands(context: Context, monitoringPort: Int) extends Logging with MultiCommandHandler {
+class Commands(context: Context, monitoringPort: Int) extends StrictLogging with MultiCommandHandler {
 
   val serverSocket = new ServerSocket()
 

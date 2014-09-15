@@ -1,7 +1,6 @@
 package mot
 
 import collection.JavaConversions._
-import com.typesafe.scalalogging.slf4j.Logging
 import java.util.concurrent.ConcurrentHashMap
 import scala.concurrent.promise
 import Util.FunctionToRunnable
@@ -9,6 +8,7 @@ import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 import java.util.concurrent.TimeUnit
 import scala.util.control.NonFatal
+import com.typesafe.scalalogging.slf4j.StrictLogging
 
 /**
  * Thread model:
@@ -30,7 +30,7 @@ class Client(
   val writerBufferSize: Int = 2000,
   val connectTimeout: Int = 3000,
   val connectorGcSec: Int = 600,
-  val pessimistic: Boolean = false) extends Logging {
+  val pessimistic: Boolean = false) extends StrictLogging {
 
   private[mot] val connectors = new ConcurrentHashMap[Address, ClientConnector]
 

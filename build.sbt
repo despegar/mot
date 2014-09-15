@@ -12,8 +12,8 @@ scalacOptions in ThisBuild ++= Seq("-unchecked", "-deprecation")
 publishTo := Some("nexus-snapshots" at "http://nexus:8080/nexus/content/repositories/snapshots-miami/")
 
 libraryDependencies ++=
-  "com.typesafe" %% "scalalogging-slf4j" % "1.0.1" ::
-  "ch.qos.logback" % "logback-classic" % "1.0.13" % Test ::
+  "com.typesafe.scala-logging" %% "scala-logging-slf4j" % "2.1.2" ::
+  "ch.qos.logback" % "logback-classic" % "1.1.2" % Test ::
   "io.netty" % "netty-common" % "4.0.23.Final" ::
   Nil
   

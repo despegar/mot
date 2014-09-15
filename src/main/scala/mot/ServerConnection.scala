@@ -12,7 +12,6 @@ import mot.message.MessageFrame
 import java.util.concurrent.TimeUnit
 import scala.util.control.NonFatal
 import java.io.IOException
-import com.typesafe.scalalogging.slf4j.Logging
 import mot.buffer.WriteBuffer
 import mot.buffer.ReadBuffer
 import mot.message.ClientHello
@@ -25,8 +24,9 @@ import scala.concurrent.promise
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 import java.util.concurrent.atomic.AtomicReference
+import com.typesafe.scalalogging.slf4j.StrictLogging
 
-class ServerConnection(val server: Server, val socket: Socket) extends Logging {
+class ServerConnection(val server: Server, val socket: Socket) extends StrictLogging {
 
   val from = Address(socket.getInetAddress.getHostAddress, socket.getPort)
   

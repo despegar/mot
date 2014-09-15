@@ -2,7 +2,6 @@ package mot
 
 import java.net.Socket
 import Util.FunctionToRunnable
-import com.typesafe.scalalogging.slf4j.Logging
 import scala.util.control.NonFatal
 import java.net.InetSocketAddress
 import java.util.concurrent.atomic.AtomicBoolean
@@ -14,12 +13,13 @@ import java.util.concurrent.ThreadFactory
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.TimeUnit
 import io.netty.util.HashedWheelTimer
+import com.typesafe.scalalogging.slf4j.StrictLogging
 
 /**
  * Represents the link between the client and one server.
  * This connector will create connections and re-create them forever when they terminate with errors.
  */
-class ClientConnector(val client: Client, val target: Address) extends Logging {
+class ClientConnector(val client: Client, val target: Address) extends StrictLogging {
 
   val sendingQueue = new LinkedBlockingQueue[(Message, Option[PendingResponse])](client.queueSize)
 
