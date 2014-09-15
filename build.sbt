@@ -14,6 +14,7 @@ publishTo := Some("nexus-snapshots" at "http://nexus:8080/nexus/content/reposito
 libraryDependencies ++=
   "com.typesafe" %% "scalalogging-slf4j" % "1.0.1" ::
   "ch.qos.logback" % "logback-classic" % "1.0.13" % Test ::
+  "io.netty" % "netty-common" % "4.0.23.Final" ::
   Nil
   
 // Do not include src/{main,test}/java in the configuration, to avoid having sbt-eclipse generate them empty

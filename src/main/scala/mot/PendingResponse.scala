@@ -7,22 +7,27 @@ import java.util.concurrent.locks.ReentrantLock
 import java.util.concurrent.TimeUnit
 import Util.FunctionToRunnable
 import Util.withLock
+import io.netty.util.Timeout
+import io.netty.util.TimerTask
 
 class PendingResponse(val promise: Promise[Message], val timeoutMs: Int, val connector: ClientConnector) extends Logging {
 
   private val sentLock = new ReentrantLock
 
-  @volatile var expirationTask: ScheduledFuture[_] = _
+  @volatile var expirationTask: Timeout = _
   
   // Guarded by sentLock
   var mapReference: Option[PendingResponse.MapReference] = None
 
   def scheduleExpiration() = {
-    expirationTask = connector.promiseExpirator.schedule(timeout _, timeoutMs, TimeUnit.MILLISECONDS)
+    val timerTask = new TimerTask {
+      def run(t: Timeout) = timeout()
+    }
+    expirationTask = connector.promiseExpirator.newTimeout(timerTask, timeoutMs, TimeUnit.MILLISECONDS)
   }
 
   def unscheduleExpiration() = {
-    expirationTask.cancel(false /* mayInterruptIfRunning */ )
+    expirationTask.cancel()
   }
 
   def markSent(connection: ClientConnection, sequence: Int) = {

@@ -11,9 +11,9 @@ import java.io.IOException
 import java.util.concurrent.ConcurrentHashMap
 import scala.concurrent.Promise
 import java.util.concurrent.ThreadFactory
-import java.util.concurrent.ScheduledThreadPoolExecutor
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.TimeUnit
+import io.netty.util.HashedWheelTimer
 
 /**
  * Represents the link between the client and one server.
@@ -47,13 +47,9 @@ class ClientConnector(val client: Client, val target: Address) extends Logging {
   
   val promiseExpirator = {
     val tf = new ThreadFactory {
-      def newThread(r: Runnable) =
-        new Thread(r, s"mot(${client.name})-promise-expiratior-for-$target")
+      def newThread(r: Runnable) = new Thread(r, s"mot(${client.name})-promise-expiratior-for-$target")
     }
-    val stpe = new ScheduledThreadPoolExecutor(1, tf)
-    // Reduce memory footprint, as the happy path (the response arriving) implies task cancellation 
-    stpe.setRemoveOnCancelPolicy(true)
-    stpe
+    new HashedWheelTimer(tf, 200, TimeUnit.MILLISECONDS, 5000)
   }
 
   thread.start()
