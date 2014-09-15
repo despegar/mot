@@ -24,12 +24,15 @@ import scala.collection.immutable
 import scala.concurrent.promise
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
+import java.util.concurrent.atomic.AtomicReference
 
 class ServerConnection(val server: Server, val socket: Socket) extends Logging {
 
   val from = Address(socket.getInetAddress.getHostAddress, socket.getPort)
   
   val finalized = new AtomicBoolean
+  val exception: AtomicReference[Throwable] = new AtomicReference
+  
   val handler = new ServerConnectionHandler(this)
 
   val sendingQueue = new LinkedBlockingQueue[(Int, Message)](server.sendingQueueSize)
@@ -64,7 +67,8 @@ class ServerConnection(val server: Server, val socket: Socket) extends Logging {
   }
 
   def finalize(e: Throwable) {
-    if (finalized.compareAndSet(false, true)) {
+    if (exception.compareAndSet(null, e)) {
+      finalized.set(true)
       logger.debug(s"Finalizing server connection from $from")
       handler.reportError(e)
       Util.closeSocket(socket)
@@ -90,7 +94,7 @@ class ServerConnection(val server: Server, val socket: Socket) extends Logging {
     while (!enqueued && !finalized.get)
       enqueued = sendingQueue.offer((responder.sequence, response), 100, TimeUnit.MILLISECONDS)
     if (!enqueued)
-      throw new InvalidServerConnectionException(handler.exception)
+      throw new InvalidServerConnectionException(exception.get)
   }
 
   def close() = {
