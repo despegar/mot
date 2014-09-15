@@ -38,8 +38,8 @@ class ClientConnection(val connector: ClientConnector, val socket: Socket) exten
 
   val pendingResponses =
     new ConcurrentHashMap[Int /* sequence */ , PendingResponse](
-      256 /* initial capacity */ ,
-      0.75f /* default load factor */ ,
+      1000 /* initial capacity */ ,
+      0.5f /* load factor */ ,
       3 /* concurrency level: one thread adding values, one removing, one expiring */ )
 
   val closed = new AtomicBoolean
@@ -119,12 +119,12 @@ class ClientConnection(val connector: ClientConnector, val socket: Socket) exten
 
   def processMessage(response: Response) = {
     val body = response.bodyParts.head // Incoming messages only have one part
-    Option(pendingResponses.remove(response.requestReference)) match {
-      case Some(pendingResponse) =>
+    pendingResponses.remove(response.requestReference) match {
+      case pendingResponse: PendingResponse =>
         val msg = Message(response.attributes, body :: Nil /* use :: to avoid mutable builders */ )
         if (pendingResponse.fulfill(msg))
           connector.responsesReceivedCounter += 1
-      case None =>
+      case null =>
         logger.trace("Unexpected response arrived (probably expired and then collected): " + response)
     }
   }
@@ -137,16 +137,15 @@ class ClientConnection(val connector: ClientConnector, val socket: Socket) exten
       writeBuffer.flush()
       val serverHello = Protocol.wait(serverHelloFuture, stop = closed).getOrElse(throw new ClientClosedException)
       while (!closed.get) {
-        val dequeued = Option(connector.sendingQueue.poll(200, TimeUnit.MILLISECONDS))
-        dequeued match {
-          case Some((message, optionalPromise)) =>
+        connector.sendingQueue.poll(200, TimeUnit.MILLISECONDS) match {
+          case (message, optionalPromise) =>
             /*
              * There was something in the queue
              */
             sendMessage(message, optionalPromise, serverHello.maxLength)
             if (connector.sendingQueue.isEmpty)
               writeBuffer.flush()
-          case None =>
+          case null =>
             /*
              * Nothing in the queue after some time, send heart beat.
              * The purpose of heart beats is to keep the wire active where there are no messages.

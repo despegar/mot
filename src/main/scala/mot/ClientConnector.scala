@@ -49,7 +49,7 @@ class ClientConnector(val client: Client, val target: Address) extends StrictLog
     val tf = new ThreadFactory {
       def newThread(r: Runnable) = new Thread(r, s"mot(${client.name})-promise-expiratior-for-$target")
     }
-    new HashedWheelTimer(tf, 200, TimeUnit.MILLISECONDS, 5000)
+    new HashedWheelTimer(tf, 200, TimeUnit.MILLISECONDS, 1000)
   }
 
   thread.start()
