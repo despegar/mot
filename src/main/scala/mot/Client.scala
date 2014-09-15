@@ -109,7 +109,7 @@ class Client(
     p.future
   }
   
-  def sendRequestAndWait(target: Address, message: Message, timeout: Int) =
+  def getResponse(target: Address, message: Message, timeout: Int) =
     Await.result(sendRequest(target, message, timeout), Duration.Inf /* future will timeout */)
   
   def sendMessage(target: Address, message: Message) = {
