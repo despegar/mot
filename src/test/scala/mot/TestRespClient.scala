@@ -6,10 +6,9 @@ object TestRespClient {
 
   def main(args: Array[String]) = {
     val ctx = new Context(4001)
-    val client = new Client(ctx, "test-client", queueSize = 50000, readerBufferSize = 100000, writerBufferSize = 100000)
+    val client = new Client(ctx, "test-client", queueSize = 100000, readerBufferSize = 100000, writerBufferSize = 100000)
     val target = Address("10.70.134.145", 5000)
     val msg = Message.fromArray(Nil, "x".getBytes)
-    var i = 0L
     def send() = {
       while (true) {
         val res = client.sendRequest(target, msg, 10000)

@@ -88,7 +88,6 @@ class ClientConnection(val connector: ClientConnector, val socket: Socket) exten
       while (!closed.get) {
         val message = MessageBase.readFromBuffer(readBuffer, connector.client.responseMaxLength)
         logger.trace("Read " + message)
-        val now = System.nanoTime()
         message match {
           case _: Heartbeat => // pass
           case response: Response => processMessage(response)
