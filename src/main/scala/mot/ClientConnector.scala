@@ -14,6 +14,7 @@ import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.TimeUnit
 import io.netty.util.HashedWheelTimer
 import com.typesafe.scalalogging.slf4j.StrictLogging
+import scala.concurrent.duration.Duration
 
 /**
  * Represents the link between the client and one server.
@@ -23,7 +24,7 @@ class ClientConnector(val client: Client, val target: Address) extends StrictLog
 
   val sendingQueue = new LinkedBlockingQueue[(Message, Option[PendingResponse])](client.queueSize)
 
-  val thread = new Thread(connectLoop _, s"mot(${client.name})-connector-for-$target")
+  val thread = new Thread(connectLoop _, s"mot(${client.name})-writer-for-$target")
   val closed = new AtomicBoolean
 
   @volatile var currentConnection: Option[ClientConnection] = None
@@ -134,10 +135,12 @@ class ClientConnector(val client: Client, val target: Address) extends StrictLog
       // Must catch anything that is network-related (to retry) but nothing that could be a bug.
       // Note that DNS-related errors do not throw SocketExceptions
       case e: IOException =>
+        logger.info(s"Cannot connect to $target: ${e.getMessage}.")
         val delay = System.nanoTime() - start
-        if (delay > 10 * 1000 * 1000 * 1000)
+        if (delay > ClientConnector.optimisticTolerance.toNanos && lastConnectingException.isEmpty) {
           lastConnectingException = Some(e) // used also as a flag of error (when isDefined)
-        logger.error(s"Error connecting to $target. Retrying.", e)
+          logger.info(s"Connector set to error state afer optimistic tolerance of ${ClientConnector.optimisticTolerance}")
+        }
     }
     lastConnectingException = None
     res
@@ -151,4 +154,8 @@ class ClientConnector(val client: Client, val target: Address) extends StrictLog
     currentConnection.foreach(_.readerThread.join())
   }
 
+}
+
+object ClientConnector {
+  val optimisticTolerance = Duration(10, TimeUnit.SECONDS)
 }

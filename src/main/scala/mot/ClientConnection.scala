@@ -102,7 +102,7 @@ class ClientConnection(val connector: ClientConnector, val socket: Socket) exten
         logger.error(s"Bad data read from connection: " + e.getMessage)
         reportError(e)
       case e: IOException =>
-        logger.error("IO exception while reading", e)
+        logger.info("IO exception while reading: " + e.getMessage)
         reportError(e)
       case NonFatal(e) =>
         logger.error("Unexpected error (bug) in reader loop", e)
@@ -163,10 +163,10 @@ class ClientConnection(val connector: ClientConnector, val socket: Socket) exten
       }
     } catch {
       case e: IOException =>
-        logger.error(s"IO exception while writing: ${e.getMessage()}. Possibly some messages got lost. Reconnecting.")
+        logger.info(s"IO exception while writing: ${e.getMessage()}. Possibly some messages got lost. Reconnecting.")
         reportError(e)
       case e: ClientClosedException =>
-        logger.error("client closed while writing. Possibly some messages got lost. Reconnecting.")
+        logger.info("client closed while writing. Possibly some messages got lost. Reconnecting.")
         reportError(e)
     }
   }

@@ -184,7 +184,7 @@ class ServerConnection(val server: Server, val socket: Socket) extends StrictLog
         logger.error(s"Bad data read from connection: ${e.getMessage} (non-fatal: client should reconnect)")
         finalize(e)
       case e: IOException =>
-        logger.error("IO exception while reading (non-fatal: client should reconnect)", e)
+        logger.info("IO exception while reading (non-fatal: client should reconnect): " + e.getMessage)
         finalize(e)
       case NonFatal(e) =>
         logger.error("Unexpected error (bug) in reader loop (non-fatal: client should reconnect)", e)

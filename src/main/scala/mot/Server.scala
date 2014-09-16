@@ -40,7 +40,9 @@ class Server(
   val writerBufferSize: Int = 10000) extends StrictLogging {
 
   val serverSocket = new ServerSocket
-  serverSocket.bind(new InetSocketAddress(bindAddress, bindPort))
+  val bindSocketAddress = new InetSocketAddress(bindAddress, bindPort)
+  serverSocket.bind(bindSocketAddress)
+  logger.info("Server bound to " + bindSocketAddress)
 
   private[mot] val receivingQueue = new LinkedBlockingQueue[IncomingMessage](receivingQueueSize)
 
