@@ -11,7 +11,7 @@ object TestRespClient {
     val msg = Message.fromArray(Nil, "x".getBytes)
     def send() = {
       while (true) {
-        val res = client.sendRequest(target, msg, 10000)
+        val res = client.sendRequest(target, msg, 2000)
       }
     }
     val clientThread1 = new Thread(send _, "client-thread-1").start()

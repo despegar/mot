@@ -37,7 +37,7 @@ class Server(
   val receivingQueueSize: Int = 5000,
   val sendingQueueSize: Int = 5000,
   val readerBufferSize: Int = 10000,
-  val writerBufferSize: Int = 2000) extends StrictLogging {
+  val writerBufferSize: Int = 10000) extends StrictLogging {
 
   val serverSocket = new ServerSocket
   serverSocket.bind(new InetSocketAddress(bindAddress, bindPort))
