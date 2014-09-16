@@ -39,6 +39,10 @@ class ClientConnector(val client: Client, val target: Address) extends StrictLog
   // It need not be atomic as the expirator has only one thread
   @volatile var timeoutsCounter = 0L
 
+  val unrespondableEnqueued = new AtomicLong
+  val respondableEnqueued = new AtomicLong
+  
+  @volatile var expiredInQueue = 0L
   @volatile var unrespondableSentCounter = 0L
   @volatile var respondableSentCounter = 0L
   @volatile var responsesReceivedCounter = 0L
@@ -61,12 +65,16 @@ class ClientConnector(val client: Client, val target: Address) extends StrictLog
 
   def offerMessage(message: Message) = {
     lastUse = System.nanoTime()
-    sendingQueue.offer((message, None))
+    val success = sendingQueue.offer((message, None))
+    if (success)
+      unrespondableEnqueued.incrementAndGet()
+    success
   }
 
-  def putMessage(message: Message) = {
+  def putMessage(message: Message): Unit = {
     lastUse = System.nanoTime()
     sendingQueue.put((message, None))
+    unrespondableEnqueued.incrementAndGet()
   }
 
   def offerRequest(message: Message, pendingResponse: PendingResponse) = {
@@ -78,8 +86,10 @@ class ClientConnector(val client: Client, val target: Address) extends StrictLog
      */  
     pendingResponse.scheduleExpiration()
     val success = sendingQueue.offer((message, Some(pendingResponse)))
-    if (!success)
+    if (!success) {
       pendingResponse.unscheduleExpiration()
+      respondableEnqueued.incrementAndGet()
+    }
     success
   }
 
@@ -87,6 +97,7 @@ class ClientConnector(val client: Client, val target: Address) extends StrictLog
     lastUse = System.nanoTime()
     pendingResponse.scheduleExpiration()
     sendingQueue.put((message, Some(pendingResponse)))
+    respondableEnqueued.incrementAndGet()
   }
 
   def connectLoop() = {

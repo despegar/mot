@@ -174,16 +174,18 @@ class ClientConnection(val connector: ClientConnector, val socket: Socket) exten
   private def sendMessage(msg: Message, pendingResponse: Option[PendingResponse], maxLength: Int) {
     if (msg.bodyLength > maxLength) {
       /* 
-     * The client is trying to send a message larger than the maximum allowed by the server. If the message is respondable
-     * it is possible to let the client know using the promise. If the message is unrespondable, the only thing we can do
-     * is log the error.
-     */
+      * The client is trying to send a message larger than the maximum allowed by the server. If the message is respondable
+      * it is possible to let the client know using the promise. If the message is unrespondable, the only thing we can do
+      * is log the error.
+      */
       val exception = new MessageTooLargeException(msg.bodyLength, maxLength)
       pendingResponse match {
         case Some(pr) =>
           if (pr.error(exception)) {
             // condition is true when timeout did not "win"
             connector.triedToSendTooLargeMessage += 1
+          } else {
+            connector.expiredInQueue += 1
           }
         case None =>
           logger.info(exception.getMessage)
@@ -197,6 +199,8 @@ class ClientConnection(val connector: ClientConnector, val socket: Socket) exten
             // Message has not expired
             connector.respondableSentCounter += 1
             doSendMessage(MessageFrame(true, pr.timeoutMs, msg.attributes, msg.bodyLength, msg.bodyParts))
+          } else {
+            connector.expiredInQueue += 1
           }
         case None =>
           // Message is unrespondable
