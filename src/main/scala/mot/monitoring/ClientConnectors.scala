@@ -4,6 +4,7 @@ import mot.util.Tabler
 import mot.Context
 import collection.JavaConversions._
 import scala.collection.immutable
+import java.util.concurrent.TimeUnit
 
 class ClientConnectors(context: Context) extends SimpleCommandHandler {
 
@@ -16,6 +17,7 @@ class ClientConnectors(context: Context) extends SimpleCommandHandler {
     Tabler.draw(
       Col[String]("CLIENT", 17, Alignment.Left),
       Col[String]("TARGET", 25, Alignment.Left),
+      Col[Long]("IDLE", 7, Alignment.Right),
       Col[Int]("SND-QUEUE", 9, Alignment.Right),
       Col[String]("LOCAL-ADDR", 25, Alignment.Left),
       Col[String]("REMOTE-ADDR", 25, Alignment.Left),
@@ -36,9 +38,12 @@ class ClientConnectors(context: Context) extends SimpleCommandHandler {
             case None =>
               ("-", "-", None, None, 0)
           }
+          val now = System.nanoTime()
+          val idle = TimeUnit.NANOSECONDS.toSeconds(now - connector.lastUse)
           printer(
             client.name,
             connector.target.toString,
+            idle,
             connector.sendingQueue.size,
             local,
             remote,
