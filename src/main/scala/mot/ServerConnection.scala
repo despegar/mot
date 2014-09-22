@@ -25,6 +25,7 @@ import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 import java.util.concurrent.atomic.AtomicReference
 import com.typesafe.scalalogging.slf4j.StrictLogging
+import mot.message.Hello
 
 class ServerConnection(val server: Server, val socket: Socket) extends StrictLogging {
 
@@ -105,7 +106,7 @@ class ServerConnection(val server: Server, val socket: Socket) extends StrictLog
 
   def writerLoop() = {
     try {
-      val serverHello = ServerHello(protocolVersion = 1, server.name, maxLength = server.requestMaxLength)
+      val serverHello = ServerHello(protocolVersion = 1, server.name, maxLength = server.requestMaxLength).toHelloMessage
       logger.trace("Sending " + serverHello)
       serverHello.writeToBuffer(writeBuffer)
       writeBuffer.flush()
@@ -163,7 +164,7 @@ class ServerConnection(val server: Server, val socket: Socket) extends StrictLog
       val message = MessageBase.readFromBuffer(readBuffer, server.requestMaxLength)
       logger.trace("Read " + message)
       message match {
-        case clientHello: ClientHello => processHello(clientHello)
+        case hello: Hello => processHello(hello)
         case any => throw new BadDataException("Unexpected message type: " + any.getClass.getName)
       }
       while (!finalized.get) {
@@ -192,11 +193,12 @@ class ServerConnection(val server: Server, val socket: Socket) extends StrictLog
     }
   }
 
-  def processHello(helloMessage: ClientHello) = {
+  def processHello(hello: Hello) = {
     // TODO: Ver de tolerar versiones nuevas
-    if (helloMessage.protocolVersion > Protocol.ProtocolVersion)
-      throw new UncompatibleProtocolVersion(s"read ${helloMessage.protocolVersion}, must be ${Protocol.ProtocolVersion}")
-    clientHelloPromise.success(helloMessage)
+    val clientHello = ClientHello.fromHelloMessage(hello)
+    if (clientHello.protocolVersion > Protocol.ProtocolVersion)
+      throw new UncompatibleProtocolVersion(s"read ${clientHello.protocolVersion}, must be ${Protocol.ProtocolVersion}")
+    clientHelloPromise.success(clientHello)
   }
 
   def processMessage(now: Long, frame: MessageFrame) = {

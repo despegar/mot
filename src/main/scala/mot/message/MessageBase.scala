@@ -6,6 +6,7 @@ import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
 import mot.buffer.WriteBuffer
 import scala.collection.immutable
+import scala.collection.mutable.HashMap
 
 trait MessageBase {
   def writeToBuffer(writeBuffer: WriteBuffer)
@@ -21,8 +22,7 @@ object MessageBase {
 
   def fromMessageType(messageType: MessageType.Value): ((ReadBuffer, Int) => MessageBase) = {
     messageType match {
-      case MessageType.ClientHello => ClientHello.factory
-      case MessageType.ServerHello => ServerHello.factory
+      case MessageType.Hello => Hello.factory
       case MessageType.Heartbeat => Heartbeat.factory
       case MessageType.Response => Response.factory
       case MessageType.Message => MessageFrame.factory
@@ -43,6 +43,22 @@ object MessageBase {
     }
   }
 
+  def readAttributesAsStringMap(readBuffer: ReadBuffer) = {
+    val seq = readAttributes(readBuffer)
+    val map = new HashMap[String, String]
+    map.sizeHint(seq.size)
+    for ((key, value) <- seq) {
+      val previous = map.put(key, new String(value, StandardCharsets.US_ASCII))
+      if (previous.isDefined)
+        throw new BadDataException("Duplicated attribute key: " + key)
+    }
+    map.toMap
+  }
+  
+  def getAttributeAsString(attributes: Map[String, String], key: String) = {
+    attributes.get(key).getOrElse(throw new BadDataException("Missing attribute in message: " + key))
+  }
+  
   def readIntSizeByteField(readBuffer: ReadBuffer, maxLength: Int) = {
     val length = readBuffer.getInt()
     if (length > maxLength) {

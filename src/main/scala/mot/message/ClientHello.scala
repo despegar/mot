@@ -1,30 +1,26 @@
 package mot.message
 
-import mot.buffer.ReadBuffer
-import mot.buffer.WriteBuffer
-import java.nio.charset.StandardCharsets
+import scala.collection.immutable
+import mot.BadDataException
 
-case class ClientHello(protocolVersion: Byte, sender: String, maxLength: Int) extends MessageBase {
-  
-  def writeToBuffer(writeBuffer: WriteBuffer) = {
-    writeBuffer.put(MessageType.ClientHello.id.toByte)
-    writeBuffer.put(protocolVersion)
-    MessageBase.writeByteSizeByteField(writeBuffer, sender.getBytes(StandardCharsets.US_ASCII))
-    writeBuffer.putInt(maxLength)
-  }
-  
-  override def toString() = s"ClientHello(protocolVersion=$protocolVersion,sender=$sender,maxLength=$maxLength)"
-  
+case class ClientHello(protocolVersion: Byte, sender: String, maxLength: Int) {
+  def toHelloMessage() = Hello(protocolVersion, Map(ClientHello.clientNameKey -> sender, ClientHello.maxLengthKey -> maxLength.toString))
 }
 
 object ClientHello {
   
-  def factory(readBuffer: ReadBuffer, maxLength: Int) = {
-    val version = readBuffer.get()
-    val sender = new String(MessageBase.readByteSizeByteField(readBuffer), StandardCharsets.US_ASCII)
-    val maxLength = readBuffer.getInt()
-    ClientHello(version, sender, maxLength)
-  }
+  val maxLengthKey = "max-length"
+  val clientNameKey = "client-name"
   
-}
+  def fromHelloMessage(hello: Hello) = {
+    val clientName = MessageBase.getAttributeAsString(hello.attributes, clientNameKey)
+    val maxLengthStr = MessageBase.getAttributeAsString(hello.attributes, maxLengthKey)
+    val maxLength = try {
+      maxLengthStr.toInt
+    } catch {
+      case e: NumberFormatException => throw new BadDataException("max-length in hello message is not a number: " + maxLengthStr)
+    }
+    ClientHello(hello.protocolVersion, clientName, maxLength)
+  }
 
+}

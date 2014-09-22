@@ -28,6 +28,7 @@ import scala.concurrent.duration.Duration
 import scala.concurrent.Future
 import java.util.concurrent.TimeoutException
 import com.typesafe.scalalogging.slf4j.StrictLogging
+import mot.message.Hello
 
 class ClientConnection(val connector: ClientConnector, val socket: Socket) extends StrictLogging {
 
@@ -81,7 +82,7 @@ class ClientConnection(val connector: ClientConnector, val socket: Socket) exten
       val message = MessageBase.readFromBuffer(readBuffer, connector.client.responseMaxLength)
       logger.trace("Read " + message)
       message match {
-        case serverHello: ServerHello => processHello(serverHello)
+        case hello: Hello => processHello(hello)
         case any => throw new BadDataException("Unexpected message type: " + any.getClass.getName)
       }
       while (!closed.get) {
@@ -109,7 +110,8 @@ class ClientConnection(val connector: ClientConnector, val socket: Socket) exten
     }
   }
 
-  def processHello(serverHello: ServerHello) = {
+  def processHello(hello: Hello) = {
+    val serverHello = ServerHello.fromHelloMessage(hello)
     // TODO: Ver de tolerar versiones nuevas
     if (serverHello.protocolVersion > Protocol.ProtocolVersion)
       throw new UncompatibleProtocolVersion(s"read ${serverHello.protocolVersion}, must be ${Protocol.ProtocolVersion}")
@@ -130,7 +132,7 @@ class ClientConnection(val connector: ClientConnector, val socket: Socket) exten
 
   def writerLoop() {
     try {
-      val clientHello = ClientHello(1, connector.client.name, Short.MaxValue)
+      val clientHello = ClientHello(1, connector.client.name, Short.MaxValue).toHelloMessage
       logger.trace("Sending " + clientHello)
       clientHello.writeToBuffer(writeBuffer)
       writeBuffer.flush()
