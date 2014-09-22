@@ -7,17 +7,20 @@ import java.nio.charset.StandardCharsets
 import mot.buffer.WriteBuffer
 import scala.collection.immutable
 import scala.collection.mutable.HashMap
+import com.typesafe.scalalogging.slf4j.StrictLogging
 
 trait MessageBase {
   def writeToBuffer(writeBuffer: WriteBuffer)
 }
 
-object MessageBase {
+object MessageBase extends StrictLogging {
 
   def readFromBuffer(readBuffer: ReadBuffer, maxLength: Int) = {
     val messageType = MessageType(readBuffer.get)
     val factory = fromMessageType(messageType)
-    factory(readBuffer, maxLength)
+    val msg = factory(readBuffer, maxLength)
+    logger.trace("Read " + msg)
+    msg
   }
 
   def fromMessageType(messageType: MessageType.Value): ((ReadBuffer, Int) => MessageBase) = {

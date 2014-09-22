@@ -79,16 +79,12 @@ class ClientConnection(val connector: ClientConnector, val socket: Socket) exten
   def readerLoop() = {
     try {
       ReaderUtil.prepareSocket(socket)
-      val message = MessageBase.readFromBuffer(readBuffer, connector.client.responseMaxLength)
-      logger.trace("Read " + message)
-      message match {
+      MessageBase.readFromBuffer(readBuffer, connector.client.responseMaxLength) match {
         case hello: Hello => processHello(hello)
         case any => throw new BadDataException("Unexpected message type: " + any.getClass.getName)
       }
       while (!closed.get) {
-        val message = MessageBase.readFromBuffer(readBuffer, connector.client.responseMaxLength)
-        logger.trace("Read " + message)
-        message match {
+        MessageBase.readFromBuffer(readBuffer, connector.client.responseMaxLength) match {
           case _: Heartbeat => // pass
           case response: Response => processMessage(response)
           case any => throw new BadDataException("Unexpected message type: " + any.getClass.getName)

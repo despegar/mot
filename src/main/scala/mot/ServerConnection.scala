@@ -161,19 +161,14 @@ class ServerConnection(val server: Server, val socket: Socket) extends StrictLog
   def readerLoop() = {
     try {
       ReaderUtil.prepareSocket(socket)
-      val message = MessageBase.readFromBuffer(readBuffer, server.requestMaxLength)
-      logger.trace("Read " + message)
-      message match {
+      MessageBase.readFromBuffer(readBuffer, server.requestMaxLength) match {
         case hello: Hello => processHello(hello)
         case any => throw new BadDataException("Unexpected message type: " + any.getClass.getName)
       }
       while (!finalized.get) {
-        val message = MessageBase.readFromBuffer(readBuffer, server.requestMaxLength)
-        val now = System.nanoTime()
-        logger.trace("Read " + message)
-        message match {
+        MessageBase.readFromBuffer(readBuffer, server.requestMaxLength) match {
           case m: Heartbeat => // pass
-          case messageFrame: MessageFrame => processMessage(now, messageFrame)
+          case messageFrame: MessageFrame => processMessage(messageFrame)
           case any => throw new BadDataException("Unexpected message type: " + any.getClass.getName)
         }
       }
@@ -199,10 +194,11 @@ class ServerConnection(val server: Server, val socket: Socket) extends StrictLog
     clientHelloPromise.success(clientHello)
   }
 
-  def processMessage(now: Long, frame: MessageFrame) = {
+  def processMessage(frame: MessageFrame) = {
     val body = frame.bodyParts.head // Incoming messages only have one part
     val responder = if (frame.respondable) {
       receivedRespondable += 1
+      val now = System.nanoTime()
       Some(new Responder(handler, sequence, now, frame.timeout))
     } else {
       receivedUnrespondable += 1
