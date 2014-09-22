@@ -32,6 +32,8 @@ class Client(
   val connectorGcSec: Int = 600,
   val pessimistic: Boolean = false) extends StrictLogging {
 
+  val connectorGcMs = TimeUnit.SECONDS.toMillis(connectorGcSec)
+  
   private[mot] val connectors = new ConcurrentHashMap[Address, ClientConnector]
 
   @volatile private var closed = false
@@ -45,14 +47,14 @@ class Client(
   def connectorExpirator() = {
     try {
       val runDelayMs = 1000
-      val connectorGcNs = connectorGcSec.toLong * 1000 * 1000 * 1000
+      val connectorGcNs = TimeUnit.SECONDS.toNanos(connectorGcSec)
       while (!closed) {
         val threshold = System.nanoTime() - connectorGcNs
         val it = connectors.entrySet.iterator
         while (it.hasNext) {
           val entry = it.next
           val (target, connector) = (entry.getKey, entry.getValue)
-          if (connector.lastUse < threshold && connector.sendingQueue.isEmpty) {
+          if (connector.lastUse < threshold) {
             it.remove()
             connector.close()
           }
@@ -82,15 +84,17 @@ class Client(
   }
 
   /**
-   * Offer a request. Succeed only if the message can be enqueued immediately.
+   * Offer a request. Succeed only if the message can be enqueued immediately. 
+   * The future returned will block until the response arrived or the specified timeout expires.
    * @return Some(future) of a response if the message could be enqueued or None if the corresponding queue overflowed
    */
-  def offerRequest(target: Address, message: Message, timeout: Int) = {
+  def offerRequest(target: Address, message: Message, timeoutMs: Int) = {
     checkClosed()
+    checkTimeout(timeoutMs)
     val connector = getConnector(target)
     bePessimistic(connector)
     val p = promise[Message]
-    if (connector.offerRequest(message, new PendingResponse(p, timeout, connector)))
+    if (connector.offerRequest(message, new PendingResponse(p, timeoutMs, connector)))
       Some(p.future)
     else
       None
@@ -98,19 +102,24 @@ class Client(
   
   /**
    * Send a request. Block until the message can be enqueued.
+   * The future returned will block until the response arrived or the specified timeout expires.
    * @return a future of a response
    */
-  def sendRequest(target: Address, message: Message, timeout: Int) = {
+  def sendRequest(target: Address, message: Message, timeoutMs: Int) = {
     checkClosed()
+    checkTimeout(timeoutMs)
     val connector = getConnector(target)
     bePessimistic(connector)
     val p = promise[Message]
-    connector.putRequest(message, new PendingResponse(p, timeout, connector))
+    connector.putRequest(message, new PendingResponse(p, timeoutMs, connector))
     p.future
   }
   
-  def getResponse(target: Address, message: Message, timeout: Int) =
-    Await.result(sendRequest(target, message, timeout), Duration.Inf /* future will timeout */)
+  /**
+   * Send a request and block until the response arrives or the timeout expires.
+   */
+  def getResponse(target: Address, message: Message, timeoutMs: Int) =
+    Await.result(sendRequest(target, message, timeoutMs), Duration.Inf /* future will timeout by itself */)
   
   def sendMessage(target: Address, message: Message) = {
     checkClosed()
@@ -126,6 +135,11 @@ class Client(
     connector.offerMessage(message)
   }
 
+  private def checkTimeout(timeoutMs: Int) = {
+    if (timeoutMs > connectorGcMs)
+      throw new IllegalArgumentException(s"Request timeout cannot be longer than client GC time ($connectorGcMs sec.)")
+  }
+  
   private def bePessimistic(connector: ClientConnector) = {
     if (pessimistic) {
       connector.lastConnectingError.foreach { e => 
