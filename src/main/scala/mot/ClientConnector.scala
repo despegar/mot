@@ -119,7 +119,7 @@ class ClientConnector(val client: Client, val target: Address) extends StrictLog
       val socket = new Socket
       // Create a socket address for each connection attempt, to avoid caching DNS resolution forever
       val socketAddress = new InetSocketAddress(target.host, target.port)
-      socket.connect(socketAddress, client.connectTimeout)
+      socket.connect(socketAddress, ClientConnector.connectTimeout)
       logger.info(s"Socket to $target connected")
       socket
     }
@@ -151,4 +151,5 @@ class ClientConnector(val client: Client, val target: Address) extends StrictLog
 
 object ClientConnector {
   val optimisticTolerance = Duration(10, TimeUnit.SECONDS)
+  val connectTimeout = 3000
 }

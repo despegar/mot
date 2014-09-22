@@ -30,7 +30,6 @@ class Client(
   val queueSize: Int = 5000,
   val readerBufferSize: Int = 10000,
   val writerBufferSize: Int = 10000,
-  val connectTimeout: Int = 3000,
   val connectorGcSec: Int = 600,
   val pessimistic: Boolean = false) extends StrictLogging {
 
@@ -170,3 +169,4 @@ class Client(
   }
   
 }
+
