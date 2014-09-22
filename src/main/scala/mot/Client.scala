@@ -9,6 +9,8 @@ import scala.concurrent.duration.Duration
 import java.util.concurrent.TimeUnit
 import scala.util.control.NonFatal
 import com.typesafe.scalalogging.slf4j.StrictLogging
+import java.util.concurrent.ThreadFactory
+import io.netty.util.HashedWheelTimer
 
 /**
  * Thread model:
@@ -43,7 +45,14 @@ class Client(
   Protocol.checkName(name)
   context.registerClient(this)
   expiratorThread.start()
-  
+    
+  private[mot] val promiseExpirator = {
+    val tf = new ThreadFactory {
+      def newThread(r: Runnable) = new Thread(r, s"mot($name)-promise-expiratior")
+    }
+    new HashedWheelTimer(tf, 200 /* tick duration */, TimeUnit.MILLISECONDS, 1000 /* ticks per wheel */)
+  }
+
   def connectorExpirator() = {
     try {
       val runDelayMs = 1000
@@ -157,6 +166,7 @@ class Client(
     closed = true
     context.clients.remove(name)
     connectors.values.foreach(_.close())
+    promiseExpirator.stop()
   }
   
 }

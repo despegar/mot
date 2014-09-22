@@ -73,7 +73,6 @@ class ClientConnection(val connector: ClientConnector, val socket: Socket) exten
 
   def close() {
     reportError(new ClientClosedException)
-    connector.promiseExpirator.stop()
   }
 
   def readerLoop() = {

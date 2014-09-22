@@ -24,7 +24,7 @@ class ClientConnector(val client: Client, val target: Address) extends StrictLog
 
   val sendingQueue = new LinkedBlockingQueue[(Message, Option[PendingResponse])](client.queueSize)
 
-  val thread = new Thread(connectLoop _, s"mot(${client.name})-writer-for-$target")
+  val writerThread = new Thread(connectLoop _, s"mot(${client.name})-writer-for-$target")
   val closed = new AtomicBoolean
 
   @volatile var currentConnection: Option[ClientConnection] = None
@@ -49,15 +49,8 @@ class ClientConnector(val client: Client, val target: Address) extends StrictLog
   @volatile var responsesReceivedCounter = 0L
 
   @volatile var triedToSendTooLargeMessage = 0L
-  
-  val promiseExpirator = {
-    val tf = new ThreadFactory {
-      def newThread(r: Runnable) = new Thread(r, s"mot(${client.name})-promise-expiratior-for-$target")
-    }
-    new HashedWheelTimer(tf, 200, TimeUnit.MILLISECONDS, 1000)
-  }
 
-  thread.start()
+  writerThread.start()
   logger.debug(s"Creating connector: ${client.name}->$target")
 
   def isConnected() = currentConnection.isDefined
@@ -150,7 +143,7 @@ class ClientConnector(val client: Client, val target: Address) extends StrictLog
     logger.debug(s"Closing connector ${client.name}->$target")
     closed.set(true)
     currentConnection.foreach(_.close())
-    thread.join()
+    writerThread.join()
     currentConnection.foreach(_.readerThread.join())
   }
 

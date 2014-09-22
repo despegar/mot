@@ -23,7 +23,7 @@ class PendingResponse(val promise: Promise[Message], val timeoutMs: Int, val con
     val timerTask = new TimerTask {
       def run(t: Timeout) = timeout()
     }
-    expirationTask = connector.promiseExpirator.newTimeout(timerTask, timeoutMs, TimeUnit.MILLISECONDS)
+    expirationTask = connector.client.promiseExpirator.newTimeout(timerTask, timeoutMs, TimeUnit.MILLISECONDS)
   }
 
   def unscheduleExpiration() = {
