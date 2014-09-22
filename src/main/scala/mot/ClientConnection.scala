@@ -112,9 +112,7 @@ class ClientConnection(val connector: ClientConnector, val socket: Socket) exten
 
   def processHello(hello: Hello) = {
     val serverHello = ServerHello.fromHelloMessage(hello)
-    // TODO: Ver de tolerar versiones nuevas
-    if (serverHello.protocolVersion > Protocol.ProtocolVersion)
-      throw new UncompatibleProtocolVersion(s"read ${serverHello.protocolVersion}, must be ${Protocol.ProtocolVersion}")
+    // This is version 1, be future proof and allow greater versions
     serverHelloPromise.success(serverHello)
   }
 

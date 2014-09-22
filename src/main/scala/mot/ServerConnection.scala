@@ -194,10 +194,8 @@ class ServerConnection(val server: Server, val socket: Socket) extends StrictLog
   }
 
   def processHello(hello: Hello) = {
-    // TODO: Ver de tolerar versiones nuevas
     val clientHello = ClientHello.fromHelloMessage(hello)
-    if (clientHello.protocolVersion > Protocol.ProtocolVersion)
-      throw new UncompatibleProtocolVersion(s"read ${clientHello.protocolVersion}, must be ${Protocol.ProtocolVersion}")
+    // This is version 1, be future proof and allow greater versions
     clientHelloPromise.success(clientHello)
   }
 
