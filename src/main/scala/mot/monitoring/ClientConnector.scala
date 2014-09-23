@@ -6,6 +6,7 @@ import mot.Context
 import mot.util.Util.CeilingDivider
 import scala.collection.immutable
 import mot.Address
+import mot.util.Util.atomicLong2Getter
 
 class ClientConnector(context: Context) extends MultiCommandHandler {
 
@@ -46,18 +47,18 @@ class ClientConnector(context: Context) extends MultiCommandHandler {
         Col[Long]("KB-WRITTEN", 11, Alignment.Right),
         Col[Long]("BUF-FILLINGS", 12, Alignment.Right),
         Col[Long]("BUF-FULL", 11, Alignment.Right)) { printer =>
-          val unrespEnqueued = Differ.fromAtomic(connector.unrespondableEnqueued)
-          val unrespondableSent = Differ.fromVolatile(connector.unrespondableSentCounter _)
-          val respEnqueued = Differ.fromAtomic(connector.respondableEnqueued)
-          val respondableSent = Differ.fromVolatile(connector.respondableSentCounter _)
-          val respExpitedInQuue = Differ.fromVolatile(connector.expiredInQueue _)
-          val responsesReceived = Differ.fromVolatile(connector.responsesReceivedCounter _)
-          val timeouts = Differ.fromVolatile(connector.timeoutsCounter _)
-          val sendTooLarge = Differ.fromVolatile(connector.triedToSendTooLargeMessage _)
-          val bytesRead = Differ.fromVolatile(connection.readBuffer.bytesCount)
-          val bytesWriten = Differ.fromVolatile(connection.writeBuffer.bytesCount)
-          val fillings = Differ.fromVolatile(connection.readBuffer.readCount)
-          val fillingsFull = Differ.fromVolatile(connection.readBuffer.bufferFullCount)
+          val unrespEnqueued = new Differ(connector.unrespondableEnqueued)
+          val unrespondableSent = new Differ(connector.unrespondableSentCounter _)
+          val respEnqueued = new Differ(connector.respondableEnqueued)
+          val respondableSent = new Differ(connector.respondableSentCounter _)
+          val respExpitedInQuue = new Differ(connector.expiredInQueue _)
+          val responsesReceived = new Differ(connector.responsesReceivedCounter _)
+          val timeouts = new Differ(connector.timeoutsCounter _)
+          val sendTooLarge = new Differ(connector.triedToSendTooLargeMessage _)
+          val bytesRead = new Differ(connection.readBuffer.bytesCount)
+          val bytesWriten = new Differ(connection.writeBuffer.bytesCount)
+          val fillings = new Differ(connection.readBuffer.readCount)
+          val fillingsFull = new Differ(connection.readBuffer.bufferFullCount)
           while (true) {
             if (connection.isClosed)
               return "Disconnected"

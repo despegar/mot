@@ -6,6 +6,7 @@ import mot.Context
 import mot.Address
 import mot.util.Util.CeilingDivider
 import scala.collection.immutable
+import mot.util.Util.atomicLong2Getter
 
 class ServerConnection(context: Context) extends MultiCommandHandler {
 
@@ -41,15 +42,15 @@ class ServerConnection(context: Context) extends MultiCommandHandler {
         Col[Long]("KB-WRITTEN", 11, Alignment.Right),
         Col[Long]("BUF-FILLINGS", 12, Alignment.Right),
         Col[Long]("BUF-FULL", 11, Alignment.Right)) { printer =>
-          val respondable = Differ.fromVolatile(connection.receivedRespondable _)
-          val unrespondable = Differ.fromVolatile(connection.receivedUnrespondable _)
-          val sent = Differ.fromVolatile(connection.sentResponses _)
-          val tooLate = Differ.fromAtomic(connection.tooLateResponses)
-          val tooLarge = Differ.fromAtomic(connection.tooLargeResponses)
-          val bytesRead = Differ.fromVolatile(connection.readBuffer.bytesCount)
-          val bytesWriten = Differ.fromVolatile(connection.writeBuffer.bytesCount)
-          val fillings = Differ.fromVolatile(connection.readBuffer.readCount)
-          val fillingsFull = Differ.fromVolatile(connection.readBuffer.bufferFullCount)
+          val respondable = new Differ(connection.receivedRespondable _)
+          val unrespondable = new Differ(connection.receivedUnrespondable _)
+          val sent = new Differ(connection.sentResponses _)
+          val tooLate = new Differ(connection.tooLateResponses)
+          val tooLarge = new Differ(connection.tooLargeResponses)
+          val bytesRead = new Differ(connection.readBuffer.bytesCount)
+          val bytesWriten = new Differ(connection.writeBuffer.bytesCount)
+          val fillings = new Differ(connection.readBuffer.readCount)
+          val fillingsFull = new Differ(connection.readBuffer.bufferFullCount)
           while (true) {
             Thread.sleep(interval)
             printer(

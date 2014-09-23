@@ -1,8 +1,6 @@
 package mot.monitoring
 
-import java.util.concurrent.atomic.AtomicLong
-
-class Differ private (val counter: () => Long) {
+class Differ(val counter: () => Long) {
 
   var previous = counter()
 
@@ -13,9 +11,4 @@ class Differ private (val counter: () => Long) {
     diff
   }
 
-}
-
-object Differ {
-  def fromVolatile(volatile: () => Long) = new Differ(volatile)
-  def fromAtomic(atomic: AtomicLong) = new Differ(atomic.get)
 }
