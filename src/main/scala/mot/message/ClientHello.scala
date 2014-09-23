@@ -1,6 +1,5 @@
 package mot.message
 
-import scala.collection.immutable
 import mot.Protocol
 
 case class ClientHello(protocolVersion: Int, sender: String, maxLength: Int) {
