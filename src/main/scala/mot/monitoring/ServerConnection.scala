@@ -33,9 +33,9 @@ class ServerConnection(context: Context) extends MultiCommandHandler {
       LiveTabler.draw(
         partWriter,
         Col[Int]("SND-QUEUE", 9, Alignment.Right),
-        Col[Long]("RCV-RESP", 11, Alignment.Right),
-        Col[Long]("RCV-UNRESP", 11, Alignment.Right),
-        Col[Long]("SENT-RESP", 11, Alignment.Right),
+        Col[Long]("REQ-RCVD", 11, Alignment.Right),
+        Col[Long]("MSG-RCVD", 11, Alignment.Right),
+        Col[Long]("RES-SENT", 11, Alignment.Right),
         Col[Long]("TOO-LATE", 11, Alignment.Right),
         Col[Long]("TOO-LARGE", 11, Alignment.Right),
         Col[Long]("KB-READ", 11, Alignment.Right),
