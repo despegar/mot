@@ -29,33 +29,26 @@ class Commands(context: Context, monitoringPort: Int) extends StrictLogging with
   }
 
   def processClient(socket: Socket) = {
-    var streamming = false
     val is = socket.getInputStream
     val os = socket.getOutputStream
     try {
       val req = Source.fromInputStream(is).mkString("")
       val reqParts = if (req.isEmpty) immutable.Seq() else req.split(" ").to[immutable.Seq]
       def writer(part: String): Unit = {
-        streamming = true
         os.write(part.getBytes)
-        os.write("\n".getBytes)
+        os.write('\n')
       }
       val res = handle(immutable.Seq(name), reqParts, writer)
-      if (streamming)
-        throw new Exception("Cannot return if streamming")
-      os.write(res.getBytes)
-      os.write("\n".getBytes)
+      writer(res)
     } catch {
       case e: SocketException =>
         logger.info(s"Client ${socket.getRemoteSocketAddress} gone (${e.getMessage})")
       case NonFatal(e) =>
         logger.error("Error processing message", e)
         try {
-          if (!streamming) {
-            val ps = new PrintStream(os)
-            e.printStackTrace(ps)
-            ps.flush()
-          }
+          val ps = new PrintStream(os)
+          e.printStackTrace(ps)
+          ps.flush()
         } catch {
           case NonFatal(e) => logger.error("Could not send message in catch block", e)
         }
