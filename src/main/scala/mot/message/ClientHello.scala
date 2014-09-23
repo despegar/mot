@@ -1,26 +1,21 @@
 package mot.message
 
 import scala.collection.immutable
-import mot.BadDataException
+import mot.Protocol
 
-case class ClientHello(protocolVersion: Byte, sender: String, maxLength: Int) {
-  def toHelloMessage() = Hello(protocolVersion, Map(ClientHello.clientNameKey -> sender, ClientHello.maxLengthKey -> maxLength.toString))
+case class ClientHello(protocolVersion: Int, sender: String, maxLength: Int) {
+  import Hello._
+  def toHelloMessage() = 
+    Hello(Map(versionKey -> Protocol.ProtocolVersion.toString, clientNameKey -> sender, maxLengthKey -> maxLength.toString))
 }
 
 object ClientHello {
   
-  val maxLengthKey = "max-length"
-  val clientNameKey = "client-name"
-  
   def fromHelloMessage(hello: Hello) = {
-    val clientName = MessageBase.getAttributeAsString(hello.attributes, clientNameKey)
-    val maxLengthStr = MessageBase.getAttributeAsString(hello.attributes, maxLengthKey)
-    val maxLength = try {
-      maxLengthStr.toInt
-    } catch {
-      case e: NumberFormatException => throw new BadDataException("max-length in hello message is not a number: " + maxLengthStr)
-    }
-    ClientHello(hello.protocolVersion, clientName, maxLength)
+    val protocolVersion = MessageBase.getIntAttribute(hello.attributes, Hello.versionKey)
+    val clientName = MessageBase.getAttribute(hello.attributes, Hello.clientNameKey)
+    val maxLength = MessageBase.getIntAttribute(hello.attributes, Hello.maxLengthKey)
+    ClientHello(protocolVersion, clientName, maxLength)
   }
 
 }

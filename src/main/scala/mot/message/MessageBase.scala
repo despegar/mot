@@ -58,8 +58,17 @@ object MessageBase extends StrictLogging {
     map.toMap
   }
   
-  def getAttributeAsString(attributes: Map[String, String], key: String) = {
+  def getAttribute(attributes: Map[String, String], key: String) = {
     attributes.get(key).getOrElse(throw new BadDataException("Missing attribute in message: " + key))
+  }
+  
+  def getIntAttribute(attributes: Map[String, String], key: String) = {
+    val strValue = getAttribute(attributes, key)
+    try {
+      strValue.toInt
+    } catch {
+      case e: NumberFormatException => throw new BadDataException(strValue + "is not a number")
+    }
   }
   
   def readIntSizeByteField(readBuffer: ReadBuffer, maxLength: Int) = {

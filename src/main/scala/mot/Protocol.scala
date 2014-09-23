@@ -30,7 +30,7 @@ import java.util.concurrent.TimeUnit
  */
 object Protocol {
   
-  val ProtocolVersion = 1.toByte
+  val ProtocolVersion = 1
   val HeartBeatInterval = 5000
   val HeartBeatIntervalNs = HeartBeatInterval.toLong * 1000 * 1000 
   
@@ -38,7 +38,6 @@ object Protocol {
   val AttributeNameMaxLength = Byte.MaxValue
   val AttributeValueMaxLength = Short.MaxValue
   val BodyMaxLength = Int.MaxValue
-  
     
   def checkName(name: String) {
     if (!Util.isAscii(name))
