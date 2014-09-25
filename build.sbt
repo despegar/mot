@@ -8,8 +8,8 @@ scalaVersion := "2.10.4"
 
 scalacOptions in ThisBuild ++= Seq("-unchecked", "-deprecation")
 
-//publishTo := Some("nexus-snapshots" at "http://nexus.despegar.it:8080/nexus/content/repositories/snapshots/")
-publishTo := Some("nexus-snapshots" at "http://nexus:8080/nexus/content/repositories/snapshots-miami/")
+publishTo := Some("nexus-snapshots" at "http://nexus.despegar.it:8080/nexus/content/repositories/snapshots/")
+//publishTo := Some("nexus-snapshots" at "http://nexus:8080/nexus/content/repositories/snapshots-miami/")
 
 libraryDependencies ++=
   "com.typesafe.scala-logging" %% "scala-logging-slf4j" % "2.1.2" ::
