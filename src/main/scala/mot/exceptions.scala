@@ -37,3 +37,4 @@ class ResponseAlreadySendException extends Exception("Message has already been r
 class InvalidServerConnectionException(cause: Throwable)
   extends Exception("Cannot send response because server the connection from which the request came was terminated", cause)
 
+class MessageNotRespondableException extends Exception("Message cannot be responded")

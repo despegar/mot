@@ -14,7 +14,7 @@ object TestServer extends StrictLogging {
       while (true) {
         val msg = server.receive()
         try {
-          msg.responder.foreach(r => if (r.isOnTime(System.nanoTime())) r.sendResponse(response))
+          msg.responderOption.foreach(r => if (r.isOnTime(System.nanoTime())) r.sendResponse(response))
         } catch {
           case e: TooLateException => // nothing
           case e: Exception => logger.info("Cannot send response", e)

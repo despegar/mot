@@ -1,5 +1,6 @@
 package mot
 
-case class IncomingMessage(responder: Option[Responder], fromAddress: Address, client: String, maxResponseLength: Int, message: Message) {
-  def isRespondible = responder.isDefined
+case class IncomingMessage(responderOption: Option[Responder], from: Address, client: String, maxResponseLength: Int, message: Message) {
+  def isRespondable() = responderOption.isDefined
+  def responder() = responderOption.getOrElse(throw new MessageNotRespondableException)
 }
