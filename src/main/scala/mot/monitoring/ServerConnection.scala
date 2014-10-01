@@ -11,12 +11,8 @@ import mot.util.Util.atomicLong2Getter
 class ServerConnection(context: Context) extends MultiCommandHandler {
 
   val subcommands = immutable.Seq(Live, Totals)
-
   val name = "server-connection"
-
   val helpLine = "Show server connection statistics."
-
-  val interval = 1000
 
   class CommandException(error: String) extends Exception(error)
 
@@ -25,6 +21,7 @@ class ServerConnection(context: Context) extends MultiCommandHandler {
     def handle(processedCommands: immutable.Seq[String], commands: immutable.Seq[String], partWriter: String => Unit): String = {
       import LiveTabler._
       import Tabler._
+      import Alignment._
       val connection = try {
         getConnection(commands)
       } catch {
@@ -32,16 +29,16 @@ class ServerConnection(context: Context) extends MultiCommandHandler {
       }
       LiveTabler.draw(
         partWriter,
-        Col[Int]("SND-QUEUE", 9, Alignment.Right),
-        Col[Long]("REQ-RCVD", 11, Alignment.Right),
-        Col[Long]("MSG-RCVD", 11, Alignment.Right),
-        Col[Long]("RES-SENT", 11, Alignment.Right),
-        Col[Long]("TOO-LATE", 11, Alignment.Right),
-        Col[Long]("TOO-LARGE", 11, Alignment.Right),
-        Col[Long]("KB-READ", 11, Alignment.Right),
-        Col[Long]("KB-WRITTEN", 11, Alignment.Right),
-        Col[Long]("BUF-FILLINGS", 12, Alignment.Right),
-        Col[Long]("BUF-FULL", 11, Alignment.Right)) { printer =>
+        Col[Int]("SND-QUEUE", 9, Right),
+        Col[Long]("REQ-RCVD", 11, Right),
+        Col[Long]("MSG-RCVD", 11, Right),
+        Col[Long]("RES-SENT", 11, Right),
+        Col[Long]("TOO-LATE", 11, Right),
+        Col[Long]("TOO-LARGE", 11, Right),
+        Col[Long]("KB-READ", 11, Right),
+        Col[Long]("KB-WRITTEN", 11, Right),
+        Col[Long]("BUF-FILLINGS", 12, Right),
+        Col[Long]("BUF-FULL", 11, Right)) { printer =>
           val respondable = new Differ(connection.receivedRespondable _)
           val unrespondable = new Differ(connection.receivedUnrespondable _)
           val sent = new Differ(connection.sentResponses _)
@@ -52,7 +49,7 @@ class ServerConnection(context: Context) extends MultiCommandHandler {
           val fillings = new Differ(connection.readBuffer.readCount)
           val fillingsFull = new Differ(connection.readBuffer.fullReadCount)
           while (true) {
-            Thread.sleep(interval)
+            Thread.sleep(Commands.liveInterval)
             printer(
               connection.sendingQueue.size,
               respondable.diff(),

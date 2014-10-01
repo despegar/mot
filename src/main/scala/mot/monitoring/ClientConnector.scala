@@ -11,12 +11,8 @@ import mot.util.Util.atomicLong2Getter
 class ClientConnector(context: Context) extends MultiCommandHandler {
 
   val subcommands = immutable.Seq(Live, Totals)
-
   val name = "client-connector"
-
   val helpLine = "Show client connector statistics."
-
-  val interval = 1000
 
   class CommandException(error: String) extends Exception(error)
 
@@ -67,7 +63,7 @@ class ClientConnector(context: Context) extends MultiCommandHandler {
           while (true) {
             if (connection.isClosed)
               return "Disconnected"
-            Thread.sleep(interval)
+            Thread.sleep(Commands.liveInterval)
             printer(
               connector.sendingQueue.size,
               connection.pendingResponses.size,

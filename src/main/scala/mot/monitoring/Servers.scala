@@ -8,7 +8,6 @@ import scala.collection.immutable
 class Servers(context: Context) extends SimpleCommandHandler {
 
   val name = "servers"
-
   val helpLine = "Print information about listening servers"
 
   def simpleHandle(processedCommands: immutable.Seq[String], commands: immutable.Seq[String]) = {

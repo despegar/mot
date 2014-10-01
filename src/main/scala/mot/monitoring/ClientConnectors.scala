@@ -9,7 +9,6 @@ import java.util.concurrent.TimeUnit
 class ClientConnectors(context: Context) extends SimpleCommandHandler {
 
   val name = "client-connectors"
-
   val helpLine = "Print information about client connectors"
 
   def simpleHandle(processedCommands: immutable.Seq[String], commands: immutable.Seq[String]) = {

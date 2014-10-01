@@ -70,3 +70,7 @@ class Commands(context: Context, monitoringPort: Int) extends StrictLogging with
     new ServerConnection(context))
 
 }
+
+object Commands {
+  val liveInterval = 1000
+}
