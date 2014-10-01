@@ -9,7 +9,6 @@ import java.util.concurrent.TimeUnit
 class ServerConnections(context: Context) extends SimpleCommandHandler {
 
   val name = "server-connections"
-
   val helpLine = "Print information about server connections"
 
   def simpleHandle(processedCommands: immutable.Seq[String], commands: immutable.Seq[String]) = {
@@ -19,7 +18,7 @@ class ServerConnections(context: Context) extends SimpleCommandHandler {
       Col[String]("SERVER", 20, Left),
       Col[String]("REMOTE-ADDR", 25, Left),
       Col[Long]("IDLE", 7, Right),
-      Col[Int]("SND-QUEUE", 9, Right),
+      Col[Int]("RCV-QUEUE", 9, Right),
       Col[String]("CLIENT", 17, Left),
       Col[Int]("CLI-MAX-LEN", 11, Right)) { printer =>
         for (server <- context.servers.values; conn <- server.connections.values) {

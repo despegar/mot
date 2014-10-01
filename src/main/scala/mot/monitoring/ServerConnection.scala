@@ -30,15 +30,17 @@ class ServerConnection(context: Context) extends MultiCommandHandler {
       LiveTabler.draw(
         partWriter,
         Col[Int]("SND-QUEUE", 9, Right),
-        Col[Long]("REQ-RCVD", 11, Right),
-        Col[Long]("MSG-RCVD", 11, Right),
-        Col[Long]("RES-SENT", 11, Right),
-        Col[Long]("TOO-LATE", 11, Right),
-        Col[Long]("TOO-LARGE", 11, Right),
-        Col[Long]("KB-READ", 11, Right),
-        Col[Long]("KB-WRITTEN", 11, Right),
-        Col[Long]("BUF-FILLINGS", 12, Right),
-        Col[Long]("BUF-FULL", 11, Right)) { printer =>
+        Col[Long]("REQ-RCVD", 9, Right),
+        Col[Long]("MSG-RCVD", 9, Right),
+        Col[Long]("RES-SENT", 9, Right),
+        Col[Long]("TOO-LATE", 9, Right),
+        Col[Long]("TOO-LARGE", 9, Right),
+        Col[Long]("KB-READ", 9, Right),
+        Col[Long]("KB-WRITTEN", 10, Right),
+        Col[Long]("SOCK-READS", 10, Right),
+        Col[Long]("READ-FULL", 10, Right),
+        Col[Long]("SOCK-WRITES", 11, Right),
+        Col[Long]("WRITE-FULL", 10, Right)) { printer =>
           val respondable = new Differ(connection.receivedRespondable _)
           val unrespondable = new Differ(connection.receivedUnrespondable _)
           val sent = new Differ(connection.sentResponses _)
@@ -46,8 +48,10 @@ class ServerConnection(context: Context) extends MultiCommandHandler {
           val tooLarge = new Differ(connection.tooLargeResponses)
           val bytesRead = new Differ(connection.readBuffer.bytesCount)
           val bytesWriten = new Differ(connection.writeBuffer.bytesCount)
-          val fillings = new Differ(connection.readBuffer.readCount)
-          val fillingsFull = new Differ(connection.readBuffer.fullReadCount)
+          val socketReads = new Differ(connection.readBuffer.readCount)
+          val socketReadFull = new Differ(connection.readBuffer.fullReadCount)
+          val socketWrites = new Differ(connection.writeBuffer.writeCount)
+          val socketWriteFull = new Differ(connection.writeBuffer.fullWriteCount)
           while (true) {
             Thread.sleep(Commands.liveInterval)
             printer(
@@ -59,8 +63,10 @@ class ServerConnection(context: Context) extends MultiCommandHandler {
               tooLarge.diff(),
               bytesRead.diff() /^ 1024,
               bytesWriten.diff() /^ 1024,
-              fillings.diff(),
-              fillingsFull.diff())
+              socketReads.diff(),
+              socketReadFull.diff(),
+              socketWrites.diff(),
+              socketWriteFull.diff())
           }
         }
       throw new AssertionError
@@ -76,16 +82,18 @@ class ServerConnection(context: Context) extends MultiCommandHandler {
         case e: CommandException => return e.getMessage
       }
       "" +
-        f"Sending queue size:           ${connection.sendingQueue.size}%11d\n" +
-        f"Received respondable:         ${connection.receivedRespondable}%11d\n" +
-        f"Received unrespondable:       ${connection.receivedUnrespondable}%11d\n" +
-        f"Sent responses:               ${connection.sentResponses}%11d\n" +
-        f"Responses producted too late: ${connection.tooLateResponses.get}%11d\n" +
-        f"Responses too large:          ${connection.tooLargeResponses.get}%11d\n" +
-        f"Total bytes read:             ${connection.readBuffer.bytesCount}%11d\n" +
-        f"Total bytes written:          ${connection.writeBuffer.bytesCount}%11d\n" +
-        f"Total buffer fillings:        ${connection.readBuffer.readCount}%11d\n" +
-        f"Total full buffer fillings:   ${connection.readBuffer.fullReadCount}%11d\n"
+        f"Sending queue size:                  ${connection.sendingQueue.size}%11d\n" +
+        f"Total messages received:             ${connection.receivedRespondable}%11d\n" +
+        f"Total requests received:             ${connection.receivedUnrespondable}%11d\n" +
+        f"Total responses sent:                ${connection.sentResponses}%11d\n" +
+        f"Total responses producted too late:  ${connection.tooLateResponses.get}%11d\n" +
+        f"Total responses that were too large: ${connection.tooLargeResponses.get}%11d\n" +
+        f"Total bytes read:                    ${connection.readBuffer.bytesCount}%11d\n" +
+        f"Total bytes written:                 ${connection.writeBuffer.bytesCount}%11d\n" +
+        f"Total socket reads:                  ${connection.readBuffer.readCount}%11d\n" +
+        f"Total socket reads (full buffer):    ${connection.readBuffer.fullReadCount}%11d\n"
+        f"Total socket writes:                 ${connection.writeBuffer.writeCount}%11d\n" +
+        f"Total socket writes (full buffer):   ${connection.writeBuffer.fullWriteCount}%11d\n"
     }
   }
 
