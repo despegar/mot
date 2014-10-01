@@ -50,7 +50,7 @@ class ServerConnection(context: Context) extends MultiCommandHandler {
           val bytesRead = new Differ(connection.readBuffer.bytesCount)
           val bytesWriten = new Differ(connection.writeBuffer.bytesCount)
           val fillings = new Differ(connection.readBuffer.readCount)
-          val fillingsFull = new Differ(connection.readBuffer.bufferFullCount)
+          val fillingsFull = new Differ(connection.readBuffer.fullReadCount)
           while (true) {
             Thread.sleep(interval)
             printer(
@@ -88,7 +88,7 @@ class ServerConnection(context: Context) extends MultiCommandHandler {
         f"Total bytes read:             ${connection.readBuffer.bytesCount}%11d\n" +
         f"Total bytes written:          ${connection.writeBuffer.bytesCount}%11d\n" +
         f"Total buffer fillings:        ${connection.readBuffer.readCount}%11d\n" +
-        f"Total full buffer fillings:   ${connection.readBuffer.bufferFullCount}%11d\n"
+        f"Total full buffer fillings:   ${connection.readBuffer.fullReadCount}%11d\n"
     }
   }
 

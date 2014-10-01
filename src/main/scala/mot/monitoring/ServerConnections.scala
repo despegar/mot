@@ -4,6 +4,7 @@ import mot.util.Tabler
 import mot.Context
 import collection.JavaConversions._
 import scala.collection.immutable
+import java.util.concurrent.TimeUnit
 
 class ServerConnections(context: Context) extends SimpleCommandHandler {
 
@@ -13,17 +14,22 @@ class ServerConnections(context: Context) extends SimpleCommandHandler {
 
   def simpleHandle(processedCommands: immutable.Seq[String], commands: immutable.Seq[String]) = {
     import Tabler._
+    import Alignment._
     Tabler.draw(
-      Col[String]("SERVER", 17, Alignment.Left),
-      Col[String]("CLIENT", 17, Alignment.Left),
-      Col[String]("REMOTE-ADDR", 25, Alignment.Left),
-      Col[Int]("SND-QUEUE", 9, Alignment.Right)) { printer =>
+      Col[String]("SERVER", 20, Left),
+      Col[String]("REMOTE-ADDR", 25, Left),
+      Col[Long]("IDLE", 7, Right),
+      Col[Int]("SND-QUEUE", 9, Right),
+      Col[String]("CLIENT", 17, Left),
+      Col[Int]("CLI-MAX-LEN", 11, Right)) { printer =>
         for (server <- context.servers.values; conn <- server.connections.values) {
           printer(
             server.name,
-            conn.clientName.getOrElse("-"),
             conn.from.toString,
-            conn.sendingQueue.size)
+            TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - conn.lastReception),
+            conn.sendingQueue.size,
+            conn.clientName.getOrElse("-"),
+            conn.responseMaxLength.getOrElse(-1))
         }
       }
   }

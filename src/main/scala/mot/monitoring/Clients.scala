@@ -13,14 +13,15 @@ class Clients(context: Context) extends SimpleCommandHandler {
 
   def simpleHandle(processedCommands: immutable.Seq[String], commands: immutable.Seq[String]) = {
     import Tabler._
+    import Alignment._
     Tabler.draw(
-      Col[String]("NAME", 15, Alignment.Left),
-      Col[Int]("MAX-LENGTH", 10, Alignment.Right),
-      Col[Int]("QUEUE-MAXSIZE", 13, Alignment.Right),
-      Col[Int]("RBUF-SIZE", 9, Alignment.Right),
-      Col[Int]("WBUF-SIZE", 9, Alignment.Right),
-      Col[Boolean]("PESSIMISTIC", 11, Alignment.Left),
-      Col[Int]("CONNECTORS", 12, Alignment.Right)) { printer =>
+      Col[String]("NAME", 20, Left),
+      Col[Int]("MAX-MSG-LEN", 11, Right),
+      Col[Int]("MAX-SND-QUEUE", 13, Right),
+      Col[Int]("READBUF-SIZE", 13, Right),
+      Col[Int]("WRITEBUF-SIZE", 13, Right),
+      Col[Boolean]("PESSIMISTIC", 11, Left),
+      Col[Int]("CONNECTORS", 12, Right)) { printer =>
         for (client <- context.clients.values) {
           printer(
             client.name,

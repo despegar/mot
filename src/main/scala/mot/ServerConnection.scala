@@ -45,7 +45,9 @@ class ServerConnection(val server: Server, val socket: Socket) extends StrictLog
   val writeBuffer = new WriteBuffer(socket.getOutputStream, server.writerBufferSize)
 
   @volatile var sequence = 0
-  var lastMessage = 0L
+  var lastWrite = 0L
+  
+  @volatile var lastReception = System.nanoTime() // initialize as recently used
 
   private val clientHelloPromise = promise[ClientHello]
   private val clientHelloFuture = clientHelloPromise.future 
@@ -131,12 +133,12 @@ class ServerConnection(val server: Server, val socket: Socket) extends StrictLog
            * This is useful for detecting dropped connections and avoiding read timeouts in the other side.
            */
           val now = System.nanoTime()
-          if (now - lastMessage >= Protocol.HeartBeatIntervalNs) {
+          if (now - lastWrite >= Protocol.HeartBeatIntervalNs) {
             val heartbeat = Heartbeat()
             logger.trace("Sending " + heartbeat)
             heartbeat.writeToBuffer(writeBuffer)
             writeBuffer.flush()
-            lastMessage = System.nanoTime()
+            lastWrite = System.nanoTime()
           }
         }
       }
@@ -155,7 +157,7 @@ class ServerConnection(val server: Server, val socket: Socket) extends StrictLog
     logger.trace("Sending " + response)
     response.writeToBuffer(writeBuffer)
     sentResponses += 1
-    lastMessage = System.nanoTime()
+    lastWrite = System.nanoTime()
   }
 
   def readerLoop() = {
@@ -207,6 +209,7 @@ class ServerConnection(val server: Server, val socket: Socket) extends StrictLog
     val message = Message(frame.attributes, body :: Nil  /* use :: to avoid mutable builders */)
     val incomingMessage = IncomingMessage(responder, from, clientName.get, server.requestMaxLength, message)
     sequence += 1
+    lastReception = System.nanoTime()
     offer(server.receivingQueue, incomingMessage, finalized)
   }
 

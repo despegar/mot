@@ -14,22 +14,22 @@ class ClientConnectors(context: Context) extends SimpleCommandHandler {
 
   def simpleHandle(processedCommands: immutable.Seq[String], commands: immutable.Seq[String]) = {
     import Tabler._
+    import Alignment._
     Tabler.draw(
-      Col[String]("CLIENT", 17, Alignment.Left),
-      Col[String]("TARGET", 25, Alignment.Left),
-      Col[Long]("IDLE", 7, Alignment.Right),
-      Col[Int]("SND-QUEUE", 9, Alignment.Right),
-      Col[String]("LOCAL-ADDR", 25, Alignment.Left),
-      Col[String]("REMOTE-ADDR", 25, Alignment.Left),
-      Col[String]("SERVER", 17, Alignment.Left),
-      Col[Int]("MAX-LEN", 9, Alignment.Right),
-      Col[Int]("PENDING", 7, Alignment.Right),
-      Col[String]("LAST ERROR", 20, Alignment.Left)) { printer =>
+      Col[String]("CLIENT", 20, Left),
+      Col[String]("TARGET", 25, Left),
+      Col[Long]("IDLE", 7, Right),
+      Col[Int]("SND-QUEUE", 9, Right),
+      Col[String]("LOCAL-ADDR", 25, Left),
+      Col[String]("REMOTE-ADDR", 25, Left),
+      Col[String]("SERVER", 17, Left),
+      Col[Int]("SRV-MAX-LEN", 11, Right),
+      Col[Int]("PENDING", 7, Right),
+      Col[String]("LAST ERROR", 20, Left)) { printer =>
         for (client <- context.clients.values; connector <- client.connectors.values) {
           val lastError = connector.lastConnectingError.map(_.getMessage).getOrElse("-")
           val (local, remote, serverName, maxLength, pending) = connector.currentConnection match {
-            case Some(conn) =>
-              (
+            case Some(conn) => (
                 conn.socket.getLocalAddress.getHostAddress + ":" + conn.socket.getLocalPort,
                 conn.socket.getInetAddress.getHostAddress + ":" + conn.socket.getPort,
                 conn.serverName,

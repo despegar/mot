@@ -51,7 +51,7 @@ class ClientConnection(val connector: ClientConnector, val socket: Socket) exten
   def serverName() = serverHelloFuture.value.map(_.get.name)
   def requestMaxLength() = serverHelloFuture.value.map(_.get.maxLength)
 
-  var lastMessage = 0L
+  var lastWrite = 0L
   var msgSequence = 0
 
   def isClosed() = closed.get
@@ -126,7 +126,7 @@ class ClientConnection(val connector: ClientConnector, val socket: Socket) exten
 
   def writerLoop() {
     try {
-      val clientHello = ClientHello(1, connector.client.name, Short.MaxValue).toHelloMessage
+      val clientHello = ClientHello(1, connector.client.name, connector.client.responseMaxLength).toHelloMessage
       logger.trace("Sending " + clientHello)
       clientHello.writeToBuffer(writeBuffer)
       writeBuffer.flush()
@@ -147,12 +147,12 @@ class ClientConnection(val connector: ClientConnector, val socket: Socket) exten
              * This is useful for detecting dropped connections and avoiding read timeouts in the other side.
              */
             val now = System.nanoTime()
-            if (now - lastMessage >= Protocol.HeartBeatIntervalNs) {
+            if (now - lastWrite >= Protocol.HeartBeatIntervalNs) {
               val heartbeat = Heartbeat()
               logger.trace("Sending " + heartbeat)
               heartbeat.writeToBuffer(writeBuffer)
               writeBuffer.flush()
-              lastMessage = System.nanoTime()
+              lastWrite = System.nanoTime()
             }
         }
       }
@@ -209,7 +209,7 @@ class ClientConnection(val connector: ClientConnector, val socket: Socket) exten
     logger.trace("Sending " + msg)
     msg.writeToBuffer(writeBuffer)
     msgSequence += 1
-    lastMessage = System.nanoTime()
+    lastWrite = System.nanoTime()
   }
 
   private def forgetAllPromises(cause: Throwable) = {

@@ -27,11 +27,11 @@ class ReadBuffer(val is: InputStream, val bufferSize: Int) {
   def isCompressed() = lowPosition == 0
 
   @volatile private var _readCount = 0L
-  @volatile private var _bufferFullCount = 0L
+  @volatile private var _fullReadCount = 0L
   @volatile private var _bytesCount = 0L
   
   def readCount() = _readCount
-  def bufferFullCount() = _bufferFullCount
+  def fullReadCount() = _fullReadCount
   def bytesCount() = _bytesCount
   
   def clear() {
@@ -60,7 +60,7 @@ class ReadBuffer(val is: InputStream, val bufferSize: Int) {
     _bytesCount += bytesRead
     _readCount += 1
     if (!hasFreeSpace)
-      _bufferFullCount += 1
+      _fullReadCount += 1
   }
 
   def transferToByteBuffer(targetBuffer: ByteBuffer, length: Int) {

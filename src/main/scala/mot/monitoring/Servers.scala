@@ -13,21 +13,22 @@ class Servers(context: Context) extends SimpleCommandHandler {
 
   def simpleHandle(processedCommands: immutable.Seq[String], commands: immutable.Seq[String]) = {
     import Tabler._
+    import Alignment._
     Tabler.draw(
-      Col[String]("NAME", 15, Alignment.Left),
-      Col[String]("BIND-ADDR", 18, Alignment.Left),
-      Col[Int]("BIND-PORT", 9, Alignment.Right),
-      Col[Int]("MAX-MSG-LEN", 11, Alignment.Right),
-      Col[Int]("RCV-QUEUE-MAX", 13, Alignment.Right),
-      Col[Int]("RCV-QUEUE", 13, Alignment.Right),
-      Col[Int]("SND-QUEUE-MAX", 13, Alignment.Right),
-      Col[Int]("READBUF-SIZE", 12, Alignment.Right),
-      Col[Int]("WRITEBUF-SIZE", 13, Alignment.Right),
-      Col[Int]("CONNECTORS", 10, Alignment.Right)) { printer =>
+      Col[String]("NAME", 20, Left),
+      Col[String]("BIND-ADDR", 18, Left),
+      Col[Int]("BIND-PORT", 9, Right),
+      Col[Int]("MAX-MSG-LEN", 11, Right),
+      Col[Int]("MAX-RCV-QUEUE", 13, Right),
+      Col[Int]("RCV-QUEUE", 13, Right),
+      Col[Int]("MAX-SND-QUEUE", 13, Right),
+      Col[Int]("READBUF-SIZE", 12, Right),
+      Col[Int]("WRITEBUF-SIZE", 13, Right),
+      Col[Int]("CONNECTIONS", 11, Right)) { printer =>
         for (server <- context.servers.values) {
           printer(
             server.name,
-            server.bindAddress.toString,
+            server.bindAddress.getHostAddress,
             server.bindPort,
             server.requestMaxLength,
             server.receivingQueueSize,

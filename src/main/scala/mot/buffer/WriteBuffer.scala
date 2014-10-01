@@ -10,7 +10,7 @@ class WriteBuffer(val os: OutputStream, val bufferSize: Int) {
   
   @volatile private var _bytesCount = 0L
   @volatile private var _writeCount = 0L
-  @volatile private var _fullWrites = 0L
+  @volatile private var _fullWriteCount = 0L
   
   def writen() = position
   def remaining() = bufferSize - position
@@ -20,7 +20,7 @@ class WriteBuffer(val os: OutputStream, val bufferSize: Int) {
   
   def bytesCount() = _bytesCount
   def writeCount() = _writeCount
-  def fullWrties() = _fullWrites
+  def fullWriteCount() = _fullWriteCount
   
   def put(byte: Byte) {
     if (isFull)
@@ -71,7 +71,7 @@ class WriteBuffer(val os: OutputStream, val bufferSize: Int) {
       _bytesCount += position
       _writeCount += 1
       if (isFull)
-        _fullWrites += 1
+        _fullWriteCount += 1
       position = 0
     }
   }
