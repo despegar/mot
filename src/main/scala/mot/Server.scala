@@ -14,20 +14,6 @@ import java.nio.ByteBuffer
 import java.net.InetAddress
 import com.typesafe.scalalogging.slf4j.StrictLogging
 
-/**
- * The subscriber then accepts TCP connections from publishers. Flow control (i.e. reading judiciously)
- * is used to make publishers discard messages if they are too fast for this subscriber.
- *
- * Thread model:
- * - One acceptor thread
- * - One thread per incoming connection (should be normally one per publisher)
- *
- * @param bindAddress address to listen in
- * @param bindPort port to listen in
- * @param queueSize length (in messages) of the incoming message queue
- * @param bufferSize length (in bytes) of each receiving buffer (there is one buffer per connection)
- * @param uncaughtErrorHandler what to do if an uncaught exception terminates a thread
- */
 class Server(
   val context: Context,
   val name: String,

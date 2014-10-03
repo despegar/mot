@@ -12,17 +12,6 @@ import com.typesafe.scalalogging.slf4j.StrictLogging
 import java.util.concurrent.ThreadFactory
 import io.netty.util.HashedWheelTimer
 
-/**
- * Thread model:
- * - One thread per target
- *
- * @param name the name that is advertised to subscriber as the sender of each message
- * @param queueSize length (in messages) of each queue (there is one queue per subscriber
- * @param bufferSize length (in bytes) of each sending buffer (there is one buffer per connection)
- * @param connectTimeout timeout used in the establishment of connections
- * @param uncaughtErrorHandler what to do if an uncaught exception terminates a thread
- * @param optimistic whether to accept requests when the underlying is known to be faulty
- */
 class Client(
   val context: Context,
   val name: String,
