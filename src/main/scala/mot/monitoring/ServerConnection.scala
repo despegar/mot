@@ -40,7 +40,8 @@ class ServerConnection(context: Context) extends MultiCommandHandler {
         Col[Long]("SOCK-READS", 10, Right),
         Col[Long]("READ-FULL", 10, Right),
         Col[Long]("SOCK-WRITES", 11, Right),
-        Col[Long]("WRITE-FULL", 10, Right)) { printer =>
+        Col[Long]("WRITE-FULL", 10, Right),
+        Col[Long]("DIR-WRITES", 10, Right)) { printer =>
           val respondable = new Differ(connection.receivedRespondable _)
           val unrespondable = new Differ(connection.receivedUnrespondable _)
           val sent = new Differ(connection.sentResponses _)
@@ -52,6 +53,7 @@ class ServerConnection(context: Context) extends MultiCommandHandler {
           val socketReadFull = new Differ(connection.readBuffer.fullReadCount)
           val socketWrites = new Differ(connection.writeBuffer.writeCount)
           val socketWriteFull = new Differ(connection.writeBuffer.fullWriteCount)
+          val directWrites = new Differ(connection.writeBuffer.directWriteCount)
           while (true) {
             Thread.sleep(Commands.liveInterval)
             printer(
@@ -66,7 +68,8 @@ class ServerConnection(context: Context) extends MultiCommandHandler {
               socketReads.diff(),
               socketReadFull.diff(),
               socketWrites.diff(),
-              socketWriteFull.diff())
+              socketWriteFull.diff(),
+              directWrites.diff())
           }
         }
       throw new AssertionError
@@ -94,6 +97,7 @@ class ServerConnection(context: Context) extends MultiCommandHandler {
         f"Total socket reads (full buffer):    ${connection.readBuffer.fullReadCount}%11d\n"
         f"Total socket writes:                 ${connection.writeBuffer.writeCount}%11d\n" +
         f"Total socket writes (full buffer):   ${connection.writeBuffer.fullWriteCount}%11d\n"
+        f"Total direct writes:                 ${connection.writeBuffer.directWriteCount}%11d\n"
     }
   }
 

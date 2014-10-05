@@ -7,7 +7,7 @@ object TestServer extends StrictLogging {
 
   def main(args: Array[String]) = {
     val ctx = new Context(4002)
-    val server = new Server(ctx, "test-server", 5000, 
+    val server = new Server(ctx, "test-server", 5000, requestMaxLength = 1000000000,
         receivingQueueSize = 100000, sendingQueueSize = 100000, readerBufferSize = 100000, writerBufferSize = 100000)
     val response = Message.fromArray(Nil, "x".getBytes)
     def receive() = {

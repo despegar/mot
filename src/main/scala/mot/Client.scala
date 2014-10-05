@@ -37,7 +37,7 @@ class Client(
   val responseMaxLength: Int = 100000,
   val sendingQueueSize: Int = 5000,
   val readerBufferSize: Int = 10000,
-  val writerBufferSize: Int = 10000,
+  val writerBufferSize: Int = 5000,
   val connectorGcSec: Int = 600,
   val pessimistic: Boolean = false) extends StrictLogging {
 

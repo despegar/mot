@@ -10,6 +10,7 @@ class WriteBuffer(val os: OutputStream, val bufferSize: Int) {
   
   @volatile private var _bytesCount = 0L
   @volatile private var _writeCount = 0L
+  @volatile private var _directWriteCount = 0L
   @volatile private var _fullWriteCount = 0L
   
   def writen() = position
@@ -20,6 +21,7 @@ class WriteBuffer(val os: OutputStream, val bufferSize: Int) {
   
   def bytesCount() = _bytesCount
   def writeCount() = _writeCount
+  def directWriteCount() = _directWriteCount
   def fullWriteCount() = _fullWriteCount
   
   def put(byte: Byte) {
@@ -30,14 +32,25 @@ class WriteBuffer(val os: OutputStream, val bufferSize: Int) {
   }
 
   def put(array: Array[Byte], offset: Int, length: Int) {
-    var bytesPut = 0
-    while (bytesPut < length) {
-      if (isFull)
-        flush()
-      val bytesToPut = math.min(remaining, length - bytesPut)
-      System.arraycopy(array, offset + bytesPut, this.array, position, bytesToPut)
-      position += bytesToPut
-      bytesPut += bytesToPut
+    if (length > bufferSize) {
+      /* 
+       * No point in buffering if the length of the array is bigger than the buffer, a direct write avoids the copies 
+       * and only does one 'send' system call
+       */
+      flush()
+      os.write(array, offset, length)
+      _bytesCount += length
+      _directWriteCount += 1
+    } else {
+      var bytesPut = 0
+      while (bytesPut < length) {
+        if (isFull)
+          flush()
+        val bytesToPut = math.min(remaining, length - bytesPut)
+        System.arraycopy(array, offset + bytesPut, this.array, position, bytesToPut)
+        position += bytesToPut
+        bytesPut += bytesToPut
+      }
     }
   }
 

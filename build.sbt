@@ -24,9 +24,9 @@ unmanagedSourceDirectories in Compile := (scalaSource in Compile).value :: Nil
 unmanagedSourceDirectories in Test := (scalaSource in Test).value :: Nil
   
 fork := true
-
+	
 connectInput := true
 
-javaOptions  ++= Seq("-Xmx1900m", "-Xms1900m", "-XX:NewSize=1800m")
+javaOptions  ++= Seq("-Xmx2500m", "-Xms2500m", "-XX:NewSize=2000m")
 
 outputStrategy := Some(StdoutOutput)

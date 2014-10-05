@@ -44,6 +44,7 @@ class ClientConnector(context: Context) extends MultiCommandHandler {
         Col[Long]("KB-READ", 10, Right),
         Col[Long]("SOCK-WRITES", 11, Right),
         Col[Long]("WRITE-FULL", 10, Right),
+        Col[Long]("DIR-WRITES", 10, Right),
         Col[Long]("SOCK-READS", 10, Right),
         Col[Long]("READ-FULL", 9, Right)) { printer =>
           val messageEnqueued = new Differ(connector.unrespondableEnqueued)
@@ -58,6 +59,7 @@ class ClientConnector(context: Context) extends MultiCommandHandler {
           val bytesRead = new Differ(connection.readBuffer.bytesCount)
           val socketWrites = new Differ(connection.writeBuffer.writeCount)
           val socketWritesFull = new Differ(connection.writeBuffer.fullWriteCount)
+          val directWrites = new Differ(connection.writeBuffer.directWriteCount)
           val socketReads = new Differ(connection.readBuffer.readCount)
           val socketReadFull = new Differ(connection.readBuffer.fullReadCount)
           while (true) {
@@ -79,6 +81,7 @@ class ClientConnector(context: Context) extends MultiCommandHandler {
               bytesRead.diff() /^ 1024,
               socketWrites.diff(),
               socketWritesFull.diff(),
+              directWrites.diff(),
               socketReads.diff(),
               socketReadFull.diff())
           }
@@ -109,10 +112,11 @@ class ClientConnector(context: Context) extends MultiCommandHandler {
         f"Total requests too large:          ${connector.triedToSendTooLargeMessage}%11d\n"
         f"Total bytes written:               ${connection.writeBuffer.bytesCount}%11d\n" +
         f"Total bytes read:                  ${connection.readBuffer.bytesCount}%11d\n" +
-        f"Total socket reads:                ${connection.readBuffer.readCount}%11d\n" +
-        f"Total socket reads (full buffer):  ${connection.readBuffer.fullReadCount}%11d\n"
         f"Total socket writes:               ${connection.writeBuffer.writeCount}%11d\n" +
         f"Total socket writes (full buffer): ${connection.writeBuffer.fullWriteCount}%11d\n"
+        f"Total direct writes:               ${connection.writeBuffer.directWriteCount}%11d\n" +
+        f"Total socket reads:                ${connection.readBuffer.readCount}%11d\n" +
+        f"Total socket reads (full buffer):  ${connection.readBuffer.fullReadCount}%11d\n"
     }
   }
 
