@@ -1,19 +1,37 @@
 package mot
 
-import java.net.ServerSocket
-import Util.FunctionToRunnable
-import java.util.concurrent.TimeUnit
-import scala.util.control.NonFatal
-import java.util.concurrent.ConcurrentHashMap
-import collection.JavaConversions._
-import java.util.Collections
-import java.util.concurrent.LinkedBlockingQueue
-import Util.closeSocket
-import java.net.InetSocketAddress
-import java.nio.ByteBuffer
 import java.net.InetAddress
+import java.net.InetSocketAddress
+import java.net.ServerSocket
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.LinkedBlockingQueue
+import java.util.concurrent.TimeUnit
+
+import scala.collection.JavaConversions.collectionAsScalaIterable
+import scala.util.control.NonFatal
+
 import com.typesafe.scalalogging.slf4j.StrictLogging
 
+import mot.Util.FunctionToRunnable
+import mot.Util.closeSocket
+
+/**
+ * Mot Server.
+ *
+ * @param context the context in which this server will be registered
+ * @param name the name of this server, must be unique in the context and will be reported to the clients
+ * @param bindPort TCP port to bind
+ * @param bindAddress IP address to bind
+ * @param requestMaxLength maximum allowable request length, in bytes, this length is informed to the client.
+ *     Connections that send messages longer than the maximum are dropped to a simple DOS attack with
+ *     larger-than-allowed messages.
+ * @param receivingQueueSize maximum length (in messages) of the receiving queue size. Too big a value uses too much 
+ *     memory, too little can degrade latency as the queue is empty too much time. There is only one queue. 
+ * @param sendingQueueSize maximum length (in messages) of the sending queue size. Too big a value uses too much memory,
+ *     too little can degrade latency as the queue is empty too much time. There is one queue per counterpart.
+ * @param readerBufferSize size (in bytes) of the reader buffer
+ * @param writerBufferSize size (in bytes) of the writer buffer
+ */
 class Server(
   val context: Context,
   val name: String,
@@ -25,8 +43,8 @@ class Server(
   val readerBufferSize: Int = 10000,
   val writerBufferSize: Int = 10000) extends StrictLogging {
 
-  val serverSocket = new ServerSocket
-  val bindSocketAddress = new InetSocketAddress(bindAddress, bindPort)
+  private val serverSocket = new ServerSocket
+  private val bindSocketAddress = new InetSocketAddress(bindAddress, bindPort)
   serverSocket.bind(bindSocketAddress)
   logger.info("Server bound to " + bindSocketAddress)
 
@@ -34,7 +52,7 @@ class Server(
 
   private[mot] val connections = new ConcurrentHashMap[Address, ServerConnection]
 
-  val acceptThread = new Thread(acceptLoop _, s"mot(${name})-acceptor")
+  private val acceptThread = new Thread(acceptLoop _, s"mot(${name})-acceptor")
 
   @volatile private var closed = false
 
@@ -54,14 +72,23 @@ class Server(
     }
   }
 
+  /**
+   * Receive a message. Block until one is available.
+   */
   def receive() = {
     receivingQueue.take()
   }
   
+  /**
+   * Receive a message. Block until one is available or the timeout expires.
+   */
   def receive(timeout: Long, unit: TimeUnit) = {
     receivingQueue.poll(timeout, unit)
   }
 
+  /**
+   * Close the server. Calling this method terminates all threads and connections.
+   */
   def close() {
     closed = true
     closeSocket(serverSocket)

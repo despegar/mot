@@ -22,7 +22,7 @@ import scala.concurrent.duration.Duration
  */
 class ClientConnector(val client: Client, val target: Address) extends StrictLogging {
 
-  val sendingQueue = new LinkedBlockingQueue[(Message, Option[PendingResponse])](client.queueSize)
+  val sendingQueue = new LinkedBlockingQueue[(Message, Option[PendingResponse])](client.sendingQueueSize)
 
   val writerThread = new Thread(connectLoop _, s"mot(${client.name})-writer-for-$target")
   val closed = new AtomicBoolean

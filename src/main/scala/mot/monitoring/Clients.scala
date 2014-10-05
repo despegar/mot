@@ -25,7 +25,7 @@ class Clients(context: Context) extends SimpleCommandHandler {
           printer(
             client.name,
             client.responseMaxLength,
-            client.queueSize,
+            client.sendingQueueSize,
             client.readerBufferSize,
             client.writerBufferSize,
             client.pessimistic, 

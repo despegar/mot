@@ -1,12 +1,19 @@
 package mot
 
 import java.util.concurrent.ConcurrentHashMap
+
 import mot.monitoring.Commands
 
+/**
+ * Mot context. Clients and servers need a context.
+ * 
+ * @param monitoringPort port to bind the monitoring socket that the 'motstat' utility uses.
+ * @param uncaughtErrorHandler a handler for unexpected error (bugs).
+ */
 class Context(val monitoringPort: Int = 4001, val uncaughtErrorHandler: UncaughtErrorHandler = LoggingErrorHandler) {
 
-  val clients = new ConcurrentHashMap[String, Client]
-  val servers = new ConcurrentHashMap[String, Server]
+  private[mot] val clients = new ConcurrentHashMap[String, Client]
+  private[mot] val servers = new ConcurrentHashMap[String, Server]
   
   new Commands(this, monitoringPort).start()
  
@@ -21,5 +28,7 @@ class Context(val monitoringPort: Int = 4001, val uncaughtErrorHandler: Uncaught
     if (old != null)
       throw new Exception(s"A server with name ${server.name} is already registered.")
   }
+  
+  // TODO: Close and unregisters
 
 }
