@@ -9,18 +9,18 @@ case class Response(
   requestReference: Int,
   attributes: immutable.Seq[(String, Array[Byte])],
   bodyLength: Int, 
-  bodyParts: immutable.Seq[ByteBuffer]) extends MessageBase {
+  override val body: immutable.Seq[ByteBuffer]) extends MessageBase {
 
   def writeToBuffer(writeBuffer: WriteBuffer) = {
     writeBuffer.put(MessageType.Response.id.toByte)
     writeBuffer.putInt(requestReference)
     MessageBase.writeAttributes(writeBuffer, attributes)
-    MessageBase.writeIntSizeByteMultiField(writeBuffer, bodyLength, bodyParts)
+    MessageBase.writeIntSizeByteMultiField(writeBuffer, bodyLength, body)
   }
 
   override def toString() = {
     val attrKeys = attributes.unzip._1
-    s"Response(reqRef=$requestReference,attributes=[${attrKeys.mkString(",")}],bodySize=${bodyParts.map(_.limit).sum})"
+    s"response ref $requestReference, attr [${attrKeys.mkString(",")}], length ${body.map(_.limit).sum}"
   }
 
 }

@@ -13,20 +13,20 @@ case class MessageFrame(
     timeout: Int,
     attributes: immutable.Seq[(String, Array[Byte])], 
     bodyLength: Int,
-    bodyParts: immutable.Seq[ByteBuffer]) extends MessageBase {
+    override val body: immutable.Seq[ByteBuffer]) extends MessageBase {
 
   def writeToBuffer(writeBuffer: WriteBuffer) = {
     writeBuffer.put(MessageType.Message.id.toByte)
     writeBuffer.put(respondable.toByte)
     writeBuffer.putInt(timeout)
     MessageBase.writeAttributes(writeBuffer, attributes)
-    MessageBase.writeIntSizeByteMultiField(writeBuffer, bodyLength, bodyParts)
+    MessageBase.writeIntSizeByteMultiField(writeBuffer, bodyLength, body)
   }
   
   override def toString() = {
     val attrKeys = attributes.unzip._1
-    val bodySize = bodyParts.map(_.limit).sum
-    s"MessageFrame(respondable=$respondable,timeout=$timeout,attributes=[${attrKeys.mkString(",")}],bodySize=$bodySize)"
+    val name = if (respondable) "request" else "message"
+    s"$name timeout $timeout, attr [${attrKeys.mkString(",")}], length $bodyLength"
   }
 
 }

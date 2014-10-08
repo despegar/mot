@@ -11,6 +11,7 @@ import java.net.Socket
 import mot.Context
 import scala.collection.immutable
 import com.typesafe.scalalogging.slf4j.StrictLogging
+import java.nio.charset.StandardCharsets
 
 class Commands(context: Context, monitoringPort: Int) extends StrictLogging with MultiCommandHandler {
 
@@ -35,7 +36,7 @@ class Commands(context: Context, monitoringPort: Int) extends StrictLogging with
       val req = Source.fromInputStream(is).mkString("")
       val reqParts = if (req.isEmpty) immutable.Seq() else req.split(" ").to[immutable.Seq]
       def writer(part: String): Unit = {
-        os.write(part.getBytes)
+        os.write(part.getBytes(StandardCharsets.UTF_8))
         os.write('\n')
       }
       val res = handle(immutable.Seq(name), reqParts, writer)

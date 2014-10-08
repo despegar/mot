@@ -27,8 +27,11 @@ import java.util.concurrent.atomic.AtomicReference
 import com.typesafe.scalalogging.slf4j.StrictLogging
 import mot.message.Hello
 
-class ServerConnection(val server: Server, val socket: Socket) extends StrictLogging {
-
+class ServerConnection(val server: Server, val socket: Socket) extends StrictLogging with Connection {
+  
+  val localAddress = socket.getLocalSocketAddress.asInstanceOf[InetSocketAddress]
+  val remoteAddress = socket.getRemoteSocketAddress.asInstanceOf[InetSocketAddress]
+  
   val from = Address(socket.getInetAddress.getHostAddress, socket.getPort)
   
   val finalized = new AtomicBoolean
@@ -109,8 +112,7 @@ class ServerConnection(val server: Server, val socket: Socket) extends StrictLog
   def writerLoop() = {
     try {
       val serverHello = ServerHello(protocolVersion = 1, server.name, maxLength = server.requestMaxLength).toHelloMessage
-      logger.trace("Sending " + serverHello)
-      serverHello.writeToBuffer(writeBuffer)
+      writeMessage(serverHello)
       writeBuffer.flush()
       val clientHello = Protocol.wait(clientHelloFuture, stop = finalized).getOrElse(throw new ServerClosedException)
       while (!finalized.get) {
@@ -124,7 +126,8 @@ class ServerConnection(val server: Server, val socket: Socket) extends StrictLog
            * so messages do not spend too much time in the queue.
            * Additionally, message length is also not checked here, as that was already done before enqueuing
            */
-          sendMessage(seq, msg)
+          writeMessage(Response(sequence, msg.attributes, msg.bodyLength, msg.bodyParts))
+		  sentResponses += 1
           if (sendingQueue.isEmpty)
             writeBuffer.flush()
         } else {
@@ -134,11 +137,8 @@ class ServerConnection(val server: Server, val socket: Socket) extends StrictLog
            */
           val now = System.nanoTime()
           if (now - lastWrite >= Protocol.HeartBeatIntervalNs) {
-            val heartbeat = Heartbeat()
-            logger.trace("Sending " + heartbeat)
-            heartbeat.writeToBuffer(writeBuffer)
+            writeMessage(Heartbeat())
             writeBuffer.flush()
-            lastWrite = System.nanoTime()
           }
         }
       }
@@ -152,23 +152,21 @@ class ServerConnection(val server: Server, val socket: Socket) extends StrictLog
     }
   }
 
-  def sendMessage(sequence: Int, msg: Message) = {
-    val response = Response(sequence, msg.attributes, msg.bodyLength, msg.bodyParts)
-    logger.trace("Sending " + response)
-    response.writeToBuffer(writeBuffer)
-    sentResponses += 1
-    lastWrite = System.nanoTime()
+  def writeMessage(msg: MessageBase) {
+    server.context.dumper.dump(this, Direction.Outgoing, msg)
+    msg.writeToBuffer(writeBuffer)
+    lastWrite = System.nanoTime()    
   }
 
   def readerLoop() = {
     try {
       ReaderUtil.prepareSocket(socket)
-      MessageBase.readFromBuffer(readBuffer, server.requestMaxLength) match {
+      readMessage() match {
         case hello: Hello => processHello(hello)
         case any => throw new BadDataException("Unexpected message type: " + any.getClass.getName)
       }
       while (!finalized.get) {
-        MessageBase.readFromBuffer(readBuffer, server.requestMaxLength) match {
+        readMessage() match {
           case m: Heartbeat => // pass
           case messageFrame: MessageFrame => processMessage(messageFrame)
           case any => throw new BadDataException("Unexpected message type: " + any.getClass.getName)
@@ -189,6 +187,12 @@ class ServerConnection(val server: Server, val socket: Socket) extends StrictLog
         finalize(e)
     }
   }
+  
+  def readMessage() = {
+    val msg = MessageBase.readFromBuffer(readBuffer, server.requestMaxLength)
+    server.context.dumper.dump(this, Direction.Incoming, msg)
+    msg
+  }
 
   def processHello(hello: Hello) = {
     val clientHello = ClientHello.fromHelloMessage(hello)
@@ -197,7 +201,7 @@ class ServerConnection(val server: Server, val socket: Socket) extends StrictLog
   }
 
   def processMessage(frame: MessageFrame) = {
-    val body = frame.bodyParts.head // Incoming messages only have one part
+    val body = frame.body.head // Incoming messages only have one part
     val responder = if (frame.respondable) {
       receivedRespondable += 1
       val now = System.nanoTime()

@@ -17,6 +17,10 @@ class Context(val monitoringPort: Int = 4001, val uncaughtErrorHandler: Uncaught
   
   new Commands(this, monitoringPort).start()
  
+  private[mot] val dumper = new Dumper(6000)
+  
+  dumper.start()
+  
   def registerClient(client: Client) = {
     val old = clients.putIfAbsent(client.name, client)
     if (old != null)

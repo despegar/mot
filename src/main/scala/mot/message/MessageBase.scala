@@ -11,6 +11,7 @@ import com.typesafe.scalalogging.slf4j.StrictLogging
 
 trait MessageBase {
   def writeToBuffer(writeBuffer: WriteBuffer)
+  def body: immutable.Seq[ByteBuffer] = Nil
 }
 
 object MessageBase extends StrictLogging {
@@ -18,9 +19,7 @@ object MessageBase extends StrictLogging {
   def readFromBuffer(readBuffer: ReadBuffer, maxLength: Int) = {
     val messageType = MessageType(readBuffer.get)
     val factory = fromMessageType(messageType)
-    val msg = factory(readBuffer, maxLength)
-    logger.trace("Read " + msg)
-    msg
+    factory(readBuffer, maxLength)
   }
 
   def fromMessageType(messageType: MessageType.Value): ((ReadBuffer, Int) => MessageBase) = {

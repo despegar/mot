@@ -14,7 +14,7 @@ case class Hello(attributes: Map[String, String]) extends MessageBase {
 
   override def toString() = {
     val attrStr = for ((key, value) <- attributes) yield key + "=" + value
-    s"Hello(${attrStr.mkString(",")})"
+    s"hello attr [${attrStr.mkString(",")}]"
   }
 
 }

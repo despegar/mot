@@ -29,9 +29,13 @@ import scala.concurrent.Future
 import java.util.concurrent.TimeoutException
 import com.typesafe.scalalogging.slf4j.StrictLogging
 import mot.message.Hello
+import java.net.InetSocketAddress
 
-class ClientConnection(val connector: ClientConnector, val socket: Socket) extends StrictLogging {
+class ClientConnection(val connector: ClientConnector, val socket: Socket) extends StrictLogging with Connection {
 
+  val localAddress = socket.getLocalSocketAddress.asInstanceOf[InetSocketAddress]
+  val remoteAddress = socket.getRemoteSocketAddress.asInstanceOf[InetSocketAddress]
+  
   val readBuffer = new ReadBuffer(socket.getInputStream, connector.client.readerBufferSize)
   val writeBuffer = new WriteBuffer(socket.getOutputStream, connector.client.writerBufferSize)
 
@@ -79,12 +83,12 @@ class ClientConnection(val connector: ClientConnector, val socket: Socket) exten
   def readerLoop() = {
     try {
       ReaderUtil.prepareSocket(socket)
-      MessageBase.readFromBuffer(readBuffer, connector.client.responseMaxLength) match {
+      readMessage() match {
         case hello: Hello => processHello(hello)
         case any => throw new BadDataException("Unexpected message type: " + any.getClass.getName)
       }
       while (!closed.get) {
-        MessageBase.readFromBuffer(readBuffer, connector.client.responseMaxLength) match {
+        readMessage() match {
           case _: Heartbeat => // pass
           case response: Response => processMessage(response)
           case any => throw new BadDataException("Unexpected message type: " + any.getClass.getName)
@@ -106,6 +110,12 @@ class ClientConnection(val connector: ClientConnector, val socket: Socket) exten
     }
   }
 
+  def readMessage() = {
+    val msg = MessageBase.readFromBuffer(readBuffer, connector.client.responseMaxLength)
+    connector.client.context.dumper.dump(this, Direction.Incoming, msg)
+    msg
+  }
+  
   def processHello(hello: Hello) = {
     val serverHello = ServerHello.fromHelloMessage(hello)
     // This is version 1, be future proof and allow greater versions
@@ -113,7 +123,7 @@ class ClientConnection(val connector: ClientConnector, val socket: Socket) exten
   }
 
   def processMessage(response: Response) = {
-    val body = response.bodyParts.head // Incoming messages only have one part
+    val body = response.body.head // incoming messages only have one part
     pendingResponses.remove(response.requestReference) match {
       case pendingResponse: PendingResponse =>
         val msg = Message(response.attributes, body :: Nil /* use :: to avoid mutable builders */ )
@@ -127,8 +137,7 @@ class ClientConnection(val connector: ClientConnector, val socket: Socket) exten
   def writerLoop() {
     try {
       val clientHello = ClientHello(1, connector.client.name, connector.client.responseMaxLength).toHelloMessage
-      logger.trace("Sending " + clientHello)
-      clientHello.writeToBuffer(writeBuffer)
+      writeMessage(clientHello)
       writeBuffer.flush()
       val serverHello = Protocol.wait(serverHelloFuture, stop = closed).getOrElse(throw new ClientClosedException)
       while (!closed.get) {
@@ -148,11 +157,8 @@ class ClientConnection(val connector: ClientConnector, val socket: Socket) exten
              */
             val now = System.nanoTime()
             if (now - lastWrite >= Protocol.HeartBeatIntervalNs) {
-              val heartbeat = Heartbeat()
-              logger.trace("Sending " + heartbeat)
-              heartbeat.writeToBuffer(writeBuffer)
+              writeMessage(Heartbeat())
               writeBuffer.flush()
-              lastWrite = System.nanoTime()
             }
         }
       }
@@ -193,25 +199,25 @@ class ClientConnection(val connector: ClientConnector, val socket: Socket) exten
           if (pr.markSent(this, msgSequence)) {
             // Message has not expired
             connector.respondableSentCounter += 1
-            doSendMessage(MessageFrame(true, pr.timeoutMs, msg.attributes, msg.bodyLength, msg.bodyParts))
+            writeMessage(MessageFrame(true, pr.timeoutMs, msg.attributes, msg.bodyLength, msg.bodyParts))
           } else {
             connector.expiredInQueue += 1
           }
         case None =>
           // Message is unrespondable
           connector.unrespondableSentCounter += 1
-          doSendMessage(MessageFrame(false, 0, msg.attributes, msg.bodyLength, msg.bodyParts))
+          writeMessage(MessageFrame(false, 0, msg.attributes, msg.bodyLength, msg.bodyParts))
       }
     }
   }
 
-  private def doSendMessage(msg: MessageFrame) {
-    logger.trace("Sending " + msg)
+  private def writeMessage(msg: MessageBase) {
+    connector.client.context.dumper.dump(this, Direction.Outgoing, msg)
     msg.writeToBuffer(writeBuffer)
     msgSequence += 1
     lastWrite = System.nanoTime()
   }
-
+  
   private def forgetAllPromises(cause: Throwable) = {
     logger.debug("Forgetting all promises of client connection: " + socket.getLocalSocketAddress)
     for (pendingResponse <- pendingResponses.values) {
