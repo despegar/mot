@@ -10,7 +10,6 @@ import com.typesafe.scalalogging.slf4j.StrictLogging
 import scala.util.control.NonFatal
 import java.io.PrintStream
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.BlockingQueue
 import java.util.concurrent.LinkedBlockingQueue
 import scala.collection.JavaConversions._
 import java.nio.charset.StandardCharsets
@@ -19,6 +18,7 @@ import java.util.TimeZone
 import java.util.concurrent.atomic.AtomicLong
 import scala.io.Source
 import java.io.OutputStream
+import java.io.IOException
 
 object Direction extends Enumeration {
   val Incoming, Outgoing = Value
@@ -53,14 +53,9 @@ case class MessageEvent(timestampMs: Long, conn: Connection, direction: Directio
 }
 
 class Listener(bufferSize: Int) {
-  
-  val queue: BlockingQueue[MessageEvent] = new LinkedBlockingQueue(bufferSize)
+  val queue = new LinkedBlockingQueue[MessageEvent](bufferSize) 
   val overflows = new AtomicLong
-  
-  def shouldDump(msg: MessageBase) = {
-    true // dump everything
-  }
-  
+  def shouldDump(msg: MessageBase) = true // dump everything, no filters implemented
 }
 
 class Dumper(dumperPort: Int) extends StrictLogging {
@@ -90,15 +85,16 @@ class Dumper(dumperPort: Int) extends StrictLogging {
   def doIt() {
     while (true) {
       val socket = serverSocket.accept()
-      new Thread(() => processClient(socket), "mot-command-handler-for-" + socket.getRemoteSocketAddress).start()
+      new Thread(() => processClient(socket), "mot-dump-handler-for-" + socket.getRemoteSocketAddress).start()
     }
   }
 
   def processClient(socket: Socket) = {
+    import StandardCharsets.UTF_8
     val is = socket.getInputStream
     val os = socket.getOutputStream
-    var counter = 0L
     try {
+      // read lines until empty one
       val lines = Source.fromInputStream(is).getLines.takeWhile(!_.isEmpty).toSeq
       val params = parseParameters(lines)
       val showBody = params.get("body").map(_.toBoolean).getOrElse(false)
@@ -108,23 +104,30 @@ class Dumper(dumperPort: Int) extends StrictLogging {
       currentListeners.put(listener, true)
       try {
         @volatile var finished = false
-        def eofReader() = {
+        def eofReader() = try {
+          // closing input stream is used as a signal to tell the server to stop sending the dump,
+          // this way the server has the opportunity to send a summary at the end.
           val c = is.read()
           if (c == -1)
             finished = true
           else
             logger.error("Unexpected byte in input stream: " + c)
+        } catch {
+          case e: IOException => logger.error("Unexpected error readinginput stream: " + e.getMessage)
         }
-        new Thread(eofReader _).start()
+        new Thread(eofReader _, "mot-dump-eof-reader-for-" + socket.getRemoteSocketAddress).start()
         val sdf = new SimpleDateFormat("HH:mm:ss.SSS'Z'")
         sdf.setTimeZone(TimeZone.getTimeZone("UTC"))
+        var counter = 0L
         while (!finished) {
           val msg = listener.queue.take()
           msg.print(os, sdf, showBody, showBodyLength)
           counter += 1
         }
-        os.write(s"$counter messages capured\n".getBytes(StandardCharsets.UTF_8))
-        os.write(s"${listener.overflows.get} messages dropped\n".getBytes(StandardCharsets.UTF_8))
+        // EOF received, print summary
+        os.write(s"${counter + listener.overflows.get} messages capured\n".getBytes(UTF_8))
+        os.write(s"$counter messages dumped\n".getBytes(UTF_8))
+        os.write(s"${listener.overflows.get} messages dropped\n".getBytes(UTF_8))
       } finally {
         currentListeners.remove(listener)
       }
@@ -151,7 +154,7 @@ class Dumper(dumperPort: Int) extends StrictLogging {
       if (parts.size != 2)
         throw new Exception("Invalid line: " + line)
       val Seq(key, value) = parts
-      (key -> value)
+      (key, value)
     }
     pairs.toMap
   }
