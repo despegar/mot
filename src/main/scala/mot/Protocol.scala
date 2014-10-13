@@ -1,11 +1,8 @@
 package mot
 
-import scala.concurrent.Future
 import scala.concurrent.duration.Duration
-import java.util.concurrent.atomic.AtomicBoolean
-import scala.concurrent.Await
-import java.util.concurrent.TimeoutException
 import java.util.concurrent.TimeUnit
+import mot.util.UnaryPromise
 
 /**
  * Binary protocol format (all string are UTF-8):
@@ -46,14 +43,10 @@ object Protocol {
       throw new IllegalArgumentException(s"Party name cannot be longer than $PartyNameMaxLength characters")
   }
   
-  def wait[A](future: Future[A], stop: AtomicBoolean) = {
+  def wait[A](promise: UnaryPromise[A], stop: () => Boolean) = {
     var value: Option[A] = None
-    while (value.isEmpty && !stop.get) {
-      value = try {
-        Some(Await.result(future, Duration(100, TimeUnit.MILLISECONDS)))
-      } catch {
-        case e: TimeoutException => None
-      }
+    while (value.isEmpty && !stop()) {
+      value = promise.result(Duration(100, TimeUnit.MILLISECONDS))
     }
     value
   }

@@ -1,6 +1,5 @@
 package mot
 
-import scala.concurrent.Promise
 import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.locks.ReentrantLock
 import java.util.concurrent.TimeUnit
@@ -9,12 +8,14 @@ import Util.withLock
 import io.netty.util.Timeout
 import io.netty.util.TimerTask
 import com.typesafe.scalalogging.slf4j.StrictLogging
+import mot.util.FailingPromise
 
-class PendingResponse(val promise: Promise[Message], val timeoutMs: Int, val connector: ClientConnector) extends StrictLogging {
+class PendingResponse(val promise: FailingPromise[Message], val timeoutMs: Int, val connector: ClientConnector) extends StrictLogging {
 
   private val sentLock = new ReentrantLock
 
   @volatile var expirationTask: Timeout = _
+  @volatile var promiseCompleted = false
   
   // Guarded by sentLock
   var mapReference: Option[PendingResponse.MapReference] = None
@@ -32,7 +33,7 @@ class PendingResponse(val promise: Promise[Message], val timeoutMs: Int, val con
 
   def markSent(connection: ClientConnection, sequence: Int) = {
     withLock(sentLock) {
-      if (promise.isCompleted) {
+      if (promiseCompleted) {
         false
       } else {
         mapReference = Some(PendingResponse.MapReference(connection, sequence))
@@ -43,8 +44,10 @@ class PendingResponse(val promise: Promise[Message], val timeoutMs: Int, val con
   }
   
   def timeout(): Unit = {
-    if (promise.tryFailure(new ResponseTimeoutException))
+    if (promise.tryFailure(new ResponseTimeoutException)) {
       connector.timeoutsCounter += 1
+      promiseCompleted = true
+    }
     withLock(sentLock) {
       mapReference.foreach(ref => ref.connection.pendingResponses.remove(ref.sequence))
     }
@@ -52,11 +55,13 @@ class PendingResponse(val promise: Promise[Message], val timeoutMs: Int, val con
 
   def fulfill(message: Message) = {
     unscheduleExpiration()
+    promiseCompleted = true
     promise.trySuccess(message)
   }
 
   def error(error: Exception) = {
     unscheduleExpiration()
+    promiseCompleted = true
     promise.tryFailure(error)
   }
 

@@ -87,7 +87,7 @@ class ClientConnector(val client: Client, val target: Address) extends StrictLog
     success
   }
 
-  def putRequest(message: Message, pendingResponse: PendingResponse) = {
+  def putRequest(message: Message, pendingResponse: PendingResponse): Unit = {
     lastUse = System.nanoTime()
     pendingResponse.scheduleExpiration()
     sendingQueue.put((message, Some(pendingResponse)))

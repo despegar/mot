@@ -20,12 +20,10 @@ import mot.message.Response
 import Util.FunctionToRunnable
 import java.util.concurrent.atomic.AtomicLong
 import scala.collection.immutable
-import scala.concurrent.promise
-import scala.concurrent.Await
-import scala.concurrent.duration.Duration
 import java.util.concurrent.atomic.AtomicReference
 import com.typesafe.scalalogging.slf4j.StrictLogging
 import mot.message.Hello
+import mot.util.UnaryPromise
 
 class ServerConnection(val server: Server, val socket: Socket) extends StrictLogging with Connection {
   
@@ -39,7 +37,7 @@ class ServerConnection(val server: Server, val socket: Socket) extends StrictLog
   
   val handler = new ServerConnectionHandler(this)
 
-  val sendingQueue = new LinkedBlockingQueue[(Int, Message)](server.sendingQueueSize)
+  val sendingQueue = new LinkedBlockingQueue[OutgoingResponse](server.sendingQueueSize)
 
   val readerThread = new Thread(readerLoop _, s"mot(${server.name})-reader-for-${from}")
   val writerThread = new Thread(writerLoop _, s"mot(${server.name})-writer-for-${from}")
@@ -52,17 +50,18 @@ class ServerConnection(val server: Server, val socket: Socket) extends StrictLog
   
   @volatile var lastReception = System.nanoTime() // initialize as recently used
 
-  private val clientHelloPromise = promise[ClientHello]
-  private val clientHelloFuture = clientHelloPromise.future 
+  private val clientHelloPromise = new UnaryPromise[ClientHello]
 
   @volatile var receivedRespondable = 0L
   @volatile var receivedUnrespondable = 0L
   @volatile var sentResponses = 0L
+  @volatile var expiredInQueue = 0L
+  
   val tooLateResponses = new AtomicLong 
   val tooLargeResponses = new AtomicLong
 
-  def clientName() = clientHelloFuture.value.map(_.get.sender)
-  def responseMaxLength() = clientHelloFuture.value.map(_.get.maxLength)
+  def clientName() = clientHelloPromise.value.map(_.sender)
+  def responseMaxLength() = clientHelloPromise.value.map(_.maxLength)
   
   logger.info("Accepted connection from " + from)
   
@@ -97,8 +96,10 @@ class ServerConnection(val server: Server, val socket: Socket) extends StrictLog
      * It is possible that the connection was closed after the previous check, so block looping and report the eventual close.
      */
     var enqueued = false
-    while (!enqueued && !finalized.get)
-      enqueued = sendingQueue.offer((responder.sequence, response), 100, TimeUnit.MILLISECONDS)
+    while (!enqueued && !finalized.get) {
+      val outgoingResponse = OutgoingResponse(responder.sequence, responder, response)
+      enqueued = sendingQueue.offer(outgoingResponse, 100, TimeUnit.MILLISECONDS)
+    }
     if (!enqueued)
       throw new InvalidServerConnectionException(exception.get)
   }
@@ -114,28 +115,31 @@ class ServerConnection(val server: Server, val socket: Socket) extends StrictLog
       val serverHello = ServerHello(protocolVersion = 1, server.name, maxLength = server.requestMaxLength).toHelloMessage
       writeMessage(serverHello)
       writeBuffer.flush()
-      val clientHello = Protocol.wait(clientHelloFuture, stop = finalized).getOrElse(throw new ServerClosedException)
+      val clientHello = Protocol.wait(clientHelloPromise, stop = finalized.get).getOrElse(throw new ServerClosedException)
       while (!finalized.get) {
         val outRes = sendingQueue.poll(200, TimeUnit.MILLISECONDS)
+        val now = System.nanoTime()
         if (outRes != null) {
-          val (seq, msg) = outRes
           /*
            * There was something in the queue.
-           * Note that it is not necessary to check for timeouts, as it was already checked when the response
-           * was enqueued, and there is no flow control in responses, everything is delivered as it arrives,
-           * so messages do not spend too much time in the queue.
-           * Additionally, message length is also not checked here, as that was already done before enqueuing
+           * Note that it is necessary to check again for timeouts, even if it was already checked when the response
+           * was enqueued, as there is flow control , and the response could have expired in the queue.
+           * Message length is also not checked here, as that was already done before enqueuing.
            */
-          writeMessage(Response(seq, msg.attributes, msg.bodyLength, msg.bodyParts))
-		  sentResponses += 1
-          if (sendingQueue.isEmpty)
-            writeBuffer.flush()
+          if (outRes.responder.isOnTime(now)) {
+            val msg = outRes.message
+            writeMessage(Response(outRes.sequence, msg.attributes, msg.bodyLength, msg.bodyParts))
+	  	    sentResponses += 1
+            if (sendingQueue.isEmpty)
+              writeBuffer.flush()
+          } else {
+            expiredInQueue += 1
+          }
         } else {
           /*
            * The purpose of heart beats is to keep the wire active where there are no messages.
            * This is useful for detecting dropped connections and avoiding read timeouts in the other side.
            */
-          val now = System.nanoTime()
           if (now - lastWrite >= Protocol.HeartBeatIntervalNs) {
             writeMessage(Heartbeat())
             writeBuffer.flush()
@@ -197,7 +201,7 @@ class ServerConnection(val server: Server, val socket: Socket) extends StrictLog
   def processHello(hello: Hello) = {
     val clientHello = ClientHello.fromHelloMessage(hello)
     // This is version 1, be future proof and allow greater versions
-    clientHelloPromise.success(clientHello)
+    clientHelloPromise.complete(clientHello)
   }
 
   def processMessage(frame: MessageFrame) = {

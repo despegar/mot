@@ -12,7 +12,7 @@ object TestTimeout {
     val msg = Message.fromArray(Nil, "x".getBytes)
     def send() = {
       while (true) {
-        val res = client.sendRequest(target, msg, 1)
+        val res = client.sendRequest(target, msg, 1, NullPromise)
       }
     }
     val clientThread1 = new Thread(send _, "client-thread-1").start()

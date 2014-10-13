@@ -3,17 +3,13 @@ package mot
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ThreadFactory
 import java.util.concurrent.TimeUnit
-
 import scala.collection.JavaConversions.collectionAsScalaIterable
-import scala.concurrent.Await
-import scala.concurrent.duration.Duration
-import scala.concurrent.promise
 import scala.util.control.NonFatal
-
 import com.typesafe.scalalogging.slf4j.StrictLogging
-
 import io.netty.util.HashedWheelTimer
 import mot.Util.FunctionToRunnable
+import mot.util.UnaryFailingPromise
+import mot.util.FailingPromise
 
 /**
  * Mot Client.
@@ -101,41 +97,38 @@ class Client(
 
   /**
    * Offer a request. Succeed only if the message can be enqueued immediately.
-   * The future returned will block until the response arrived or the specified timeout expires.
-   * @return Some(future) of a response if the message could be enqueued or None if the corresponding queue overflowed
+   * When the response arrives, complete the promise passed as an argument.
+   * @return whether the message could be enqueued or the corresponding queue overflowed
    */
-  def offerRequest(target: Address, message: Message, timeoutMs: Int) = {
+  def offerRequest(target: Address, message: Message, timeoutMs: Int, promise: FailingPromise[Message]) = {
     checkClosed()
     checkTimeout(timeoutMs)
     val connector = getConnector(target)
     bePessimistic(connector)
-    val p = promise[Message]
-    if (connector.offerRequest(message, new PendingResponse(p, timeoutMs, connector)))
-      Some(p.future)
-    else
-      None
-  }
-
+    connector.offerRequest(message, new PendingResponse(promise, timeoutMs, connector))
+  }  
+  
   /**
    * Send a request. Block until the message can be enqueued.
-   * The future returned will block until the response arrived or the specified timeout expires.
-   * @return a future of a response
+   * When the response arrives, complete the promise passed as an argument.
    */
-  def sendRequest(target: Address, message: Message, timeoutMs: Int) = {
+  def sendRequest(target: Address, message: Message, timeoutMs: Int, promise: FailingPromise[Message]): Unit = {
     checkClosed()
     checkTimeout(timeoutMs)
     val connector = getConnector(target)
     bePessimistic(connector)
-    val p = promise[Message]
-    connector.putRequest(message, new PendingResponse(p, timeoutMs, connector))
-    p.future
+    connector.putRequest(message, new PendingResponse(promise, timeoutMs, connector))
   }
 
   /**
    * Send a request and block until the response arrives or the timeout expires.
    */
-  def getResponse(target: Address, message: Message, timeoutMs: Int) =
-    Await.result(sendRequest(target, message, timeoutMs), Duration.Inf /* future will timeout by itself */ )
+  def getResponse(target: Address, message: Message, timeoutMs: Int) = {
+    val promise = new UnaryFailingPromise[Message]
+    sendRequest(target, message, timeoutMs, promise)
+    // Block forever at the promise level, because Mot's timeout will make it fail eventually
+    promise.result()
+  }
 
   /**
    * Send a message. Block until it can be enqueued.

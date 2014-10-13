@@ -9,7 +9,6 @@ import mot.message.Response
 import mot.buffer.WriteBuffer
 import java.util.concurrent.ConcurrentHashMap
 import mot.message.ClientHello
-import scala.concurrent.Promise
 import mot.message.MessageFrame
 import mot.message.ServerHello
 import scala.util.control.NonFatal
@@ -22,14 +21,11 @@ import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.ThreadFactory
 import java.util.concurrent.atomic.AtomicLong
 import scala.collection.immutable
-import scala.concurrent.promise
-import scala.concurrent.Await
-import scala.concurrent.duration.Duration
-import scala.concurrent.Future
 import java.util.concurrent.TimeoutException
 import com.typesafe.scalalogging.slf4j.StrictLogging
 import mot.message.Hello
 import java.net.InetSocketAddress
+import mot.util.UnaryPromise
 
 class ClientConnection(val connector: ClientConnector, val socket: Socket) extends StrictLogging with Connection {
 
@@ -49,11 +45,10 @@ class ClientConnection(val connector: ClientConnector, val socket: Socket) exten
 
   val closed = new AtomicBoolean
 
-  private val serverHelloPromise = promise[ServerHello]
-  private val serverHelloFuture = serverHelloPromise.future
+  private val serverHelloPromise = new UnaryPromise[ServerHello]
 
-  def serverName() = serverHelloFuture.value.map(_.get.name)
-  def requestMaxLength() = serverHelloFuture.value.map(_.get.maxLength)
+  def serverName() = serverHelloPromise.value.map(_.name)
+  def requestMaxLength() = serverHelloPromise.value.map(_.maxLength)
 
   var lastWrite = 0L
   var msgSequence = 0
@@ -119,7 +114,7 @@ class ClientConnection(val connector: ClientConnector, val socket: Socket) exten
   def processHello(hello: Hello) = {
     val serverHello = ServerHello.fromHelloMessage(hello)
     // This is version 1, be future proof and allow greater versions
-    serverHelloPromise.success(serverHello)
+    serverHelloPromise.complete(serverHello)
   }
 
   def processMessage(response: Response) = {
@@ -139,7 +134,7 @@ class ClientConnection(val connector: ClientConnector, val socket: Socket) exten
       val clientHello = ClientHello(1, connector.client.name, connector.client.responseMaxLength).toHelloMessage
       writeMessage(clientHello)
       writeBuffer.flush()
-      val serverHello = Protocol.wait(serverHelloFuture, stop = closed).getOrElse(throw new ClientClosedException)
+      val serverHello = Protocol.wait(serverHelloPromise, stop = closed.get).getOrElse(throw new ClientClosedException)
       while (!closed.get) {
         connector.sendingQueue.poll(200, TimeUnit.MILLISECONDS) match {
           case (message, optionalPromise) =>
