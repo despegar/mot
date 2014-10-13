@@ -126,7 +126,7 @@ class ServerConnection(val server: Server, val socket: Socket) extends StrictLog
            * so messages do not spend too much time in the queue.
            * Additionally, message length is also not checked here, as that was already done before enqueuing
            */
-          writeMessage(Response(sequence, msg.attributes, msg.bodyLength, msg.bodyParts))
+          writeMessage(Response(seq, msg.attributes, msg.bodyLength, msg.bodyParts))
 		  sentResponses += 1
           if (sendingQueue.isEmpty)
             writeBuffer.flush()
