@@ -176,7 +176,7 @@ try:
     print response
     sys.exit(0)
 except BadDataException, e:
-    log_error("Bad data: %s" % e.strerror)
+    log_error("Bad data: %s" % e)
     sys.exit(2)
 except TimeoutException:
     log_error("Response timed out after %d ms" % args.timeout)
