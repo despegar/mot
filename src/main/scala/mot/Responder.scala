@@ -1,8 +1,10 @@
 package mot
 
+import java.util.concurrent.TimeUnit
+
 class Responder(val connection: ServerConnectionHandler, val sequence: Int, val receptionTime: Long, val timeoutMs: Int) {
 
-  val timeoutNs = timeoutMs.toLong * 1000 * 1000
+  val timeoutNs = TimeUnit.MILLISECONDS.toNanos(timeoutMs)
   
   /*
    * Expiration time is calculated based on time of reception, not actual sending time. This is in order to avoid any time

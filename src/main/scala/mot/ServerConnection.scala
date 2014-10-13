@@ -164,7 +164,7 @@ class ServerConnection(val server: Server, val socket: Socket) extends StrictLog
 
   def readerLoop() = {
     try {
-      ReaderUtil.prepareSocket(socket)
+      prepareSocket(socket)
       readMessage() match {
         case hello: Hello => processHello(hello)
         case any => throw new BadDataException("Unexpected message type: " + any.getClass.getName)

@@ -77,7 +77,7 @@ class ClientConnection(val connector: ClientConnector, val socket: Socket) exten
 
   def readerLoop() = {
     try {
-      ReaderUtil.prepareSocket(socket)
+      prepareSocket(socket)
       readMessage() match {
         case hello: Hello => processHello(hello)
         case any => throw new BadDataException("Unexpected message type: " + any.getClass.getName)
@@ -170,9 +170,9 @@ class ClientConnection(val connector: ClientConnector, val socket: Socket) exten
   private def sendMessage(msg: Message, pendingResponse: Option[PendingResponse], maxLength: Int) {
     if (msg.bodyLength > maxLength) {
       /* 
-      * The client is trying to send a message larger than the maximum allowed by the server. If the message is respondable
-      * it is possible to let the client know using the promise. If the message is unrespondable, the only thing we can do
-      * is log the error.
+      * The client is trying to send a message larger than the maximum allowed by the server. If the message is 
+      * respondable it is possible to let the client know using the promise. If the message is unrespondable, the only 
+      * thing we can do is log the error.
       */
       val exception = new MessageTooLargeException(msg.bodyLength, maxLength)
       pendingResponse match {
