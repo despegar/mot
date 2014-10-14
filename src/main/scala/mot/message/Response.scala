@@ -7,10 +7,12 @@ import java.nio.ByteBuffer
 
 case class Response(
   requestReference: Int,
-  attributes: immutable.Seq[(String, Array[Byte])],
-  bodyLength: Int, 
+  override val attributes: immutable.Seq[(String, Array[Byte])],
+  override val bodyLength: Int, 
   override val body: immutable.Seq[ByteBuffer]) extends MessageBase {
 
+  def messageType = MessageType.Response
+  
   def writeToBuffer(writeBuffer: WriteBuffer) = {
     writeBuffer.put(MessageType.Response.id.toByte)
     writeBuffer.putInt(requestReference)

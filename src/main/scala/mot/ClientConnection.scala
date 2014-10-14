@@ -26,6 +26,7 @@ import com.typesafe.scalalogging.slf4j.StrictLogging
 import mot.message.Hello
 import java.net.InetSocketAddress
 import mot.util.UnaryPromise
+import mot.dump.Direction
 
 class ClientConnection(val connector: ClientConnector, val socket: Socket) extends StrictLogging with Connection {
 

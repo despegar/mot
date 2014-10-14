@@ -1,4 +1,4 @@
-package mot
+package mot.dump
 
 import mot.message.MessageBase
 import java.net.ServerSocket
@@ -19,49 +19,18 @@ import java.util.concurrent.atomic.AtomicLong
 import scala.io.Source
 import java.io.OutputStream
 import java.io.IOException
+import java.nio.charset.StandardCharsets.UTF_8
+import mot.Connection
 
-object Direction extends Enumeration {
-  val Incoming, Outgoing = Value
-}
-
-case class MessageEvent(timestampMs: Long, conn: Connection, direction: Direction.Value, message: MessageBase) {
-  
-  def print(os: OutputStream, sdf: SimpleDateFormat, showBody: Boolean, showBodyLength: Int) = {
-    val arrow = direction match {
-      case Direction.Incoming => '<'
-      case Direction.Outgoing => '>'
-    }
-    val local = formatAddress(conn.localAddress)
-    val remote = formatAddress(conn.remoteAddress)
-    val firstLine = s"${sdf.format(timestampMs)} $local $arrow $remote $message\n"
-    os.write(firstLine.getBytes(StandardCharsets.UTF_8))
-    if (showBody) {
-      var remaining = showBodyLength
-      for (buffer <- message.body) {
-        val show = math.min(remaining, buffer.limit)
-        os.write(buffer.array, buffer.arrayOffset, show)
-        remaining -= show
-      }
-      os.write('\n')
-    }
-  }
-  
-  def formatAddress(address: InetSocketAddress) = {
-    address.getAddress.getHostAddress + ":" + address.getPort
-  }
-  
-}
-
-class Listener(bufferSize: Int) {
+case class Listener(bufferSize: Int) {
   val queue = new LinkedBlockingQueue[MessageEvent](bufferSize) 
   val overflows = new AtomicLong
-  def shouldDump(msg: MessageBase) = true // dump everything, no filters implemented
 }
 
 class Dumper(dumperPort: Int) extends StrictLogging {
 
   def dump(connection: Connection, direction: Direction.Value, msg: MessageBase) = {
-    val listeners = currentListeners.keys.filter(_.shouldDump(msg))
+    val listeners = currentListeners.keySet
     if (!listeners.isEmpty) {
       // do not construct event if there are no listeners
       val event = MessageEvent(System.currentTimeMillis(), connection, direction, msg)
@@ -89,6 +58,10 @@ class Dumper(dumperPort: Int) extends StrictLogging {
     }
   }
 
+  val parser = new DumpFilterParser
+  
+  class ArgumentError(msg: String) extends Exception(msg)
+  
   def processClient(socket: Socket) = {
     import StandardCharsets.UTF_8
     val is = socket.getInputStream
@@ -98,8 +71,16 @@ class Dumper(dumperPort: Int) extends StrictLogging {
       val lines = Source.fromInputStream(is).getLines.takeWhile(!_.isEmpty).toSeq
       val params = parseParameters(lines)
       val showBody = params.get("body").map(_.toBoolean).getOrElse(false)
+      val showAttributes = params.get("attributes").map(_.toBoolean).getOrElse(false)
       val showBodyLength = params.get("length").map(_.toInt).getOrElse(1024)
       val bufferSize = params.get("buffer-size").map(_.toInt).getOrElse(10000)
+      val filterOpt = params.get("filter").map { str => 
+        parser.parseAll(str) match {
+          case parser.Success(result, next) => result
+          case parser.NoSuccess((msg, error)) => throw new ArgumentError(s"Error parsing expression: $msg")
+        }
+      }
+      val filter = filterOpt.getOrElse(AllFilter)
       val listener = new Listener(bufferSize)
       currentListeners.put(listener, true)
       try {
@@ -118,20 +99,28 @@ class Dumper(dumperPort: Int) extends StrictLogging {
         new Thread(eofReader _, "mot-dump-eof-reader-for-" + socket.getRemoteSocketAddress).start()
         val sdf = new SimpleDateFormat("HH:mm:ss.SSS'Z'")
         sdf.setTimeZone(TimeZone.getTimeZone("UTC"))
-        var counter = 0L
+        var dumped = 0L
+        var processed = 0L
         while (!finished) {
-          val msg = listener.queue.take()
-          msg.print(os, sdf, showBody, showBodyLength)
-          counter += 1
+          val event = listener.queue.take()
+          if (filter.filter(event)) {
+            event.print(os, sdf, showBody, showBodyLength, showAttributes)
+            dumped += 1
+          }
+          processed += 1
         }
         // EOF received, print summary
-        os.write(s"${counter + listener.overflows.get} messages capured\n".getBytes(UTF_8))
-        os.write(s"$counter messages dumped\n".getBytes(UTF_8))
-        os.write(s"${listener.overflows.get} messages dropped\n".getBytes(UTF_8))
+        os.write(s"$processed messages processed\n".getBytes(UTF_8))
+        os.write(s"$dumped messages dumped\n".getBytes(UTF_8))
+        os.write(s"${listener.overflows} messages dropped\n".getBytes(UTF_8))
       } finally {
         currentListeners.remove(listener)
       }
     } catch {
+      case e: ArgumentError => 
+        logger.info(s"Invalid dump filter: " + e.getMessage)
+        os.write(e.getMessage.getBytes(UTF_8))
+        os.write('\n')
       case e: SocketException =>
         logger.info(s"Client ${socket.getRemoteSocketAddress} gone (${e.getMessage})")
       case NonFatal(e) =>
@@ -150,8 +139,8 @@ class Dumper(dumperPort: Int) extends StrictLogging {
 
   def parseParameters(lines: Seq[String]) = {
     val pairs = for (line <- lines) yield {
-      val parts = line.split("=").toSeq
-      if (parts.size != 2)
+      val parts = line.split("=", 2).toSeq
+      if (parts.size < 2)
         throw new Exception("Invalid line: " + line)
       val Seq(key, value) = parts
       (key, value)

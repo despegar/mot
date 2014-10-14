@@ -24,6 +24,7 @@ import java.util.concurrent.atomic.AtomicReference
 import com.typesafe.scalalogging.slf4j.StrictLogging
 import mot.message.Hello
 import mot.util.UnaryPromise
+import mot.dump.Direction
 
 class ServerConnection(val server: Server, val socket: Socket) extends StrictLogging with Connection {
   

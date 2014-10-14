@@ -10,8 +10,14 @@ import scala.collection.mutable.HashMap
 import com.typesafe.scalalogging.slf4j.StrictLogging
 
 trait MessageBase {
-  def writeToBuffer(writeBuffer: WriteBuffer)
+
+  def messageType: MessageType.Value
+  def attributes: immutable.Seq[(String, Array[Byte])] = Nil
   def body: immutable.Seq[ByteBuffer] = Nil
+  def bodyLength = 0
+
+  def writeToBuffer(writeBuffer: WriteBuffer)
+
 }
 
 object MessageBase extends StrictLogging {
@@ -45,31 +51,6 @@ object MessageBase extends StrictLogging {
     }
   }
 
-  def readAttributesAsStringMap(readBuffer: ReadBuffer) = {
-    val seq = readAttributes(readBuffer)
-    val map = new HashMap[String, String]
-    map.sizeHint(seq.size)
-    for ((key, value) <- seq) {
-      val previous = map.put(key, new String(value, StandardCharsets.US_ASCII))
-      if (previous.isDefined)
-        throw new BadDataException("Duplicated attribute key: " + key)
-    }
-    map.toMap
-  }
-  
-  def getAttribute(attributes: Map[String, String], key: String) = {
-    attributes.get(key).getOrElse(throw new BadDataException("Missing attribute in message: " + key))
-  }
-  
-  def getIntAttribute(attributes: Map[String, String], key: String) = {
-    val strValue = getAttribute(attributes, key)
-    try {
-      strValue.toInt
-    } catch {
-      case e: NumberFormatException => throw new BadDataException(strValue + "is not a number")
-    }
-  }
-  
   def readIntSizeByteField(readBuffer: ReadBuffer, maxLength: Int) = {
     val length = readBuffer.getInt()
     if (length > maxLength) {

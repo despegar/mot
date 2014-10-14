@@ -11,10 +11,12 @@ import java.nio.ByteBuffer
 case class MessageFrame(
     respondable: Boolean,
     timeout: Int,
-    attributes: immutable.Seq[(String, Array[Byte])], 
-    bodyLength: Int,
+    override val attributes: immutable.Seq[(String, Array[Byte])], 
+    override val bodyLength: Int,
     override val body: immutable.Seq[ByteBuffer]) extends MessageBase {
 
+  def messageType = MessageType.Message
+  
   def writeToBuffer(writeBuffer: WriteBuffer) = {
     writeBuffer.put(MessageType.Message.id.toByte)
     writeBuffer.put(respondable.toByte)
