@@ -100,7 +100,7 @@ class Client(
    * When the response arrives, complete the promise passed as an argument.
    * @return whether the message could be enqueued or the corresponding queue overflowed
    */
-  def offerRequest(target: Address, message: Message, timeoutMs: Int, promise: FailingPromise[Message]) = {
+  def offerRequest(target: Address, message: Message, timeoutMs: Int, promise: FailingPromise[Message]): Boolean = {
     checkClosed()
     checkTimeout(timeoutMs)
     val connector = getConnector(target)
@@ -123,7 +123,7 @@ class Client(
   /**
    * Send a request and block until the response arrives or the timeout expires.
    */
-  def getResponse(target: Address, message: Message, timeoutMs: Int) = {
+  def getResponse(target: Address, message: Message, timeoutMs: Int): Message = {
     val promise = new UnaryFailingPromise[Message]
     sendRequest(target, message, timeoutMs, promise)
     // Block forever at the promise level, because Mot's timeout will make it fail eventually
@@ -133,7 +133,7 @@ class Client(
   /**
    * Send a message. Block until it can be enqueued.
    */
-  def sendMessage(target: Address, message: Message) = {
+  def sendMessage(target: Address, message: Message): Unit = {
     checkClosed()
     val connector = getConnector(target)
     bePessimistic(connector)
@@ -144,7 +144,7 @@ class Client(
    * Offer a message. Succeed only if it can be enqueued immediately.
    * @return true if the message could be enqueued, false otherwise
    */
-  def offerMessage(target: Address, message: Message) = {
+  def offerMessage(target: Address, message: Message): Boolean = {
     checkClosed()
     val connector = getConnector(target)
     bePessimistic(connector)
@@ -172,7 +172,7 @@ class Client(
   /**
    * Close the client. Calling this method terminates all threads and connections.
    */
-  def close() = {
+  def close(): Unit = {
     closed = true
     context.clients.remove(name)
     connectors.values.foreach(_.close())

@@ -1,5 +1,5 @@
 package mot
 
 trait UncaughtErrorHandler {
-  def handle(throwable: Throwable)
+  def handle(throwable: Throwable): Unit
 }

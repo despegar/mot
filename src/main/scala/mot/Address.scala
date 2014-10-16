@@ -7,7 +7,7 @@ case class Address(host: String, port: Int) {
 }
 
 object Address {
-  def fromString(str: String) = {
+  def fromString(str: String): Address = {
     val parts = str.split(":").to[immutable.Seq]
     if (parts.size != 2)
       throw new IllegalArgumentException("Cannot parse target: " + str)

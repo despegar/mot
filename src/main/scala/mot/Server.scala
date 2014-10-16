@@ -75,21 +75,21 @@ class Server(
   /**
    * Receive a message. Block until one is available.
    */
-  def receive() = {
+  def receive(): IncomingMessage = {
     receivingQueue.take()
   }
   
   /**
    * Receive a message. Block until one is available or the timeout expires.
    */
-  def receive(timeout: Long, unit: TimeUnit) = {
+  def receive(timeout: Long, unit: TimeUnit): IncomingMessage = {
     receivingQueue.poll(timeout, unit)
   }
 
   /**
    * Close the server. Calling this method terminates all threads and connections.
    */
-  def close() {
+  def close(): Unit = {
     closed = true
     closeSocket(serverSocket)
     acceptThread.join()
