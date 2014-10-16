@@ -127,7 +127,7 @@ class Client(
     val promise = new UnaryFailingPromise[Message]
     sendRequest(target, message, timeoutMs, promise)
     // Block forever at the promise level, because Mot's timeout will make it fail eventually
-    promise.result()
+    promise.result().get
   }
 
   /**
