@@ -17,6 +17,7 @@ trait MessageBase {
   def bodyLength = 0
 
   def writeToBuffer(writeBuffer: WriteBuffer)
+  def dump(): String
 
 }
 

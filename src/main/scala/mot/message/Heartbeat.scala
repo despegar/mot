@@ -6,7 +6,7 @@ import mot.buffer.WriteBuffer
 case class Heartbeat() extends MessageBase {
   def messageType = MessageType.Heartbeat
   def writeToBuffer(writeBuffer: WriteBuffer): Unit = writeBuffer.put(MessageType.Heartbeat.id.toByte)
-  override def toString() = "heartbeat"
+  override def dump() = "heartbeat"
 }
 
 object Heartbeat {

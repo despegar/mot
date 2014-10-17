@@ -20,7 +20,7 @@ case class Response(
     MessageBase.writeIntSizeByteMultiField(writeBuffer, bodyLength, body)
   }
 
-  override def toString() = {
+  override def dump() = {
     val attrKeys = attributes.unzip._1
     s"response ref $requestReference, attr [${attrKeys.mkString(",")}], length ${body.map(_.limit).sum}"
   }

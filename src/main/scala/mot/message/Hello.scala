@@ -2,7 +2,7 @@ package mot.message
 
 import mot.buffer.ReadBuffer
 import mot.buffer.WriteBuffer
-import java.nio.charset.StandardCharsets
+import java.nio.charset.StandardCharsets.US_ASCII
 import scala.collection.immutable
 import scala.collection.mutable.HashMap
 import mot.BadDataException
@@ -16,8 +16,8 @@ case class Hello(override val attributes: immutable.Seq[(String, Array[Byte])]) 
     MessageBase.writeAttributes(writeBuffer, attributes)
   }
 
-  override def toString() = {
-    val attrStr = for ((key, value) <- attributes) yield key + "=" + value
+  override def dump() = {
+    val attrStr = for ((key, value) <- attributes) yield key + "=" + new String(value, US_ASCII)
     s"hello attr [${attrStr.mkString(",")}]"
   }
   
@@ -25,7 +25,7 @@ case class Hello(override val attributes: immutable.Seq[(String, Array[Byte])]) 
     val map = new HashMap[String, String]
     map.sizeHint(attributes.size)
     for ((key, value) <- attributes) {
-      val previous = map.put(key, new String(value, StandardCharsets.US_ASCII))
+      val previous = map.put(key, new String(value, US_ASCII))
       if (previous.isDefined)
         throw new BadDataException("Duplicated attribute key: " + key)
     }
@@ -42,7 +42,7 @@ object Hello {
   val maxLengthKey = "max-length"
     
   def fromMap(map: Map[String, String]) =
-    Hello(map.mapValues(_.getBytes(StandardCharsets.US_ASCII)).to[immutable.Seq])  
+    Hello(map.mapValues(_.getBytes(US_ASCII)).to[immutable.Seq])  
   
   def factory(readBuffer: ReadBuffer, maxLength: Int) = Hello(MessageBase.readAttributes(readBuffer))
 

@@ -4,7 +4,7 @@ import mot.Connection
 import mot.message.MessageBase
 import java.text.SimpleDateFormat
 import java.io.OutputStream
-import java.nio.charset.StandardCharsets
+import java.nio.charset.StandardCharsets.UTF_8
 import java.net.InetSocketAddress
 
 object Direction extends Enumeration {
@@ -12,8 +12,6 @@ object Direction extends Enumeration {
 }
 
 case class MessageEvent(timestampMs: Long, conn: Connection, direction: Direction.Value, message: MessageBase) {
-  
-  import StandardCharsets.UTF_8
   
   def print(os: OutputStream, sdf: SimpleDateFormat, showBody: Boolean, maxBodyLength: Int, showAttributes: Boolean) = {
     val arrow = direction match {
@@ -23,7 +21,7 @@ case class MessageEvent(timestampMs: Long, conn: Connection, direction: Directio
     val local = formatAddress(conn.localAddress)
     val remote = formatAddress(conn.remoteAddress)
     val firstLine = 
-      s"${sdf.format(timestampMs)} ${conn.localName}[$local] $arrow ${conn.remoteName}[$remote] $message\n"
+      s"${sdf.format(timestampMs)} ${conn.localName}[$local] $arrow ${conn.remoteName}[$remote] ${message.dump}\n"
     os.write(firstLine.getBytes(UTF_8))
     if (showAttributes) {
       for ((name, value) <- message.attributes) {

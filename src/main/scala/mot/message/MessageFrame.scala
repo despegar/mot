@@ -25,7 +25,7 @@ case class MessageFrame(
     MessageBase.writeIntSizeByteMultiField(writeBuffer, bodyLength, body)
   }
   
-  override def toString() = {
+  override def dump() = {
     val attrKeys = attributes.unzip._1
     val name = if (respondable) "request" else "message"
     s"$name timeout $timeout, attr [${attrKeys.mkString(",")}], length $bodyLength"
