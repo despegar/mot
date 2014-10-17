@@ -30,7 +30,7 @@ case class MessageEvent(timestampMs: Long, conn: Connection, direction: Directio
         os.write(s"$name: $valueStr\n".getBytes(UTF_8))
       }
     }
-    if (showBody) {
+    if (showBody && message.bodyLength > 0) {
       var remaining = maxBodyLength
       for (buffer <- message.body) {
         val show = math.min(remaining, buffer.limit)
