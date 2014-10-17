@@ -33,6 +33,9 @@ class ClientConnection(val connector: ClientConnector, val socket: Socket) exten
   val localAddress = socket.getLocalSocketAddress.asInstanceOf[InetSocketAddress]
   val remoteAddress = socket.getRemoteSocketAddress.asInstanceOf[InetSocketAddress]
   
+  val localName = connector.client.name
+  def remoteName = serverName.getOrElse("")
+  
   val readBuffer = new ReadBuffer(socket.getInputStream, connector.client.readerBufferSize)
   val writeBuffer = new WriteBuffer(socket.getOutputStream, connector.client.writerBufferSize)
 

@@ -22,7 +22,8 @@ case class MessageEvent(timestampMs: Long, conn: Connection, direction: Directio
     }
     val local = formatAddress(conn.localAddress)
     val remote = formatAddress(conn.remoteAddress)
-    val firstLine = s"${sdf.format(timestampMs)} $local $arrow $remote $message\n"
+    val firstLine = 
+      s"${sdf.format(timestampMs)} ${conn.localName}[$local] $arrow ${conn.remoteName}[$remote] $message\n"
     os.write(firstLine.getBytes(UTF_8))
     if (showAttributes) {
       for ((name, value) <- message.attributes) {

@@ -31,6 +31,9 @@ class ServerConnection(val server: Server, val socket: Socket) extends StrictLog
   val localAddress = socket.getLocalSocketAddress.asInstanceOf[InetSocketAddress]
   val remoteAddress = socket.getRemoteSocketAddress.asInstanceOf[InetSocketAddress]
   
+  val localName = server.name
+  def remoteName = clientName.getOrElse("")
+  
   val from = Address(socket.getInetAddress.getHostAddress, socket.getPort)
   
   val finalized = new AtomicBoolean

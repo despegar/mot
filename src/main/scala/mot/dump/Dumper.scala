@@ -21,6 +21,7 @@ import java.io.OutputStream
 import java.io.IOException
 import java.nio.charset.StandardCharsets.UTF_8
 import mot.Connection
+import java.util.concurrent.TimeUnit
 
 case class Listener(bufferSize: Int) {
   val queue = new LinkedBlockingQueue[MessageEvent](bufferSize) 
@@ -48,7 +49,7 @@ class Dumper(dumperPort: Int) extends StrictLogging {
 
   def start() = {
     serverSocket.bind(new InetSocketAddress(dumperPort))
-    new Thread(doIt _, "mot-commands-acceptor").start()
+    new Thread(doIt _, "mot-dump-acceptor").start()
   }
 
   def doIt() {
@@ -64,6 +65,7 @@ class Dumper(dumperPort: Int) extends StrictLogging {
   
   def processClient(socket: Socket) = {
     import StandardCharsets.UTF_8
+    socket.setSoTimeout(100) // localhost should be fast
     val is = socket.getInputStream
     val os = socket.getOutputStream
     try {
@@ -94,20 +96,23 @@ class Dumper(dumperPort: Int) extends StrictLogging {
           else
             logger.error("Unexpected byte in input stream: " + c)
         } catch {
-          case e: IOException => logger.error("Unexpected error readinginput stream: " + e.getMessage)
+          case e: IOException => logger.error("Unexpected error reading input stream: " + e.getMessage)
         }
+        socket.setSoTimeout(0) // everything read, now wait forever for EOF
         new Thread(eofReader _, "mot-dump-eof-reader-for-" + socket.getRemoteSocketAddress).start()
         val sdf = new SimpleDateFormat("HH:mm:ss.SSS'Z'")
         sdf.setTimeZone(TimeZone.getTimeZone("UTC"))
         var dumped = 0L
         var processed = 0L
         while (!finished) {
-          val event = listener.queue.take()
-          if (filter.filter(event)) {
-            event.print(os, sdf, showBody, showBodyLength, showAttributes)
-            dumped += 1
+          val event = listener.queue.poll(200, TimeUnit.MILLISECONDS)
+          if (event != null) {
+            if (filter.filter(event)) {
+              event.print(os, sdf, showBody, showBodyLength, showAttributes)
+              dumped += 1
+            }
+            processed += 1
           }
-          processed += 1
         }
         // EOF received, print summary
         os.write(s"$processed messages processed\n".getBytes(UTF_8))
