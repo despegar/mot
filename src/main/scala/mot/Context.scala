@@ -10,14 +10,17 @@ import mot.dump.Dumper
  * @param monitoringPort port to bind the monitoring socket that the 'motstat' utility uses.
  * @param uncaughtErrorHandler a handler for unexpected error (bugs).
  */
-class Context(val monitoringPort: Int = 4001, val uncaughtErrorHandler: UncaughtErrorHandler = LoggingErrorHandler) {
+class Context(
+    val monitoringPort: Int = 4001, 
+    val dumpPort: Int = 6000,
+    val uncaughtErrorHandler: UncaughtErrorHandler = LoggingErrorHandler) {
 
   private[mot] val clients = new ConcurrentHashMap[String, Client]
   private[mot] val servers = new ConcurrentHashMap[String, Server]
   
   new Commands(this, monitoringPort).start()
  
-  private[mot] val dumper = new Dumper(6000)
+  private[mot] val dumper = new Dumper(dumpPort)
   
   dumper.start()
   
