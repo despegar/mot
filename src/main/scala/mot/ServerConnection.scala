@@ -170,13 +170,13 @@ class ServerConnection(val server: Server, val socket: Socket) extends StrictLog
     try {
       prepareSocket(socket)
       readMessage() match {
-        case hello: Hello => processHello(hello)
+        case (hello: Hello, seq) => processHello(hello)
         case any => throw new BadDataException("Unexpected message type: " + any.getClass.getName)
       }
       while (!finalized.get) {
         readMessage() match {
-          case m: Heartbeat => // pass
-          case messageFrame: MessageFrame => processMessage(messageFrame)
+          case (m: Heartbeat, seq) => // pass
+          case (messageFrame: MessageFrame, seq) => processMessage(messageFrame, seq)
           case any => throw new BadDataException("Unexpected message type: " + any.getClass.getName)
         }
       }
@@ -199,7 +199,10 @@ class ServerConnection(val server: Server, val socket: Socket) extends StrictLog
   def readMessage() = {
     val msg = MessageBase.readFromBuffer(readBuffer, server.requestMaxLength)
     server.context.dumper.dump(this, Direction.Incoming, msg)
-    msg
+    val seq = sequence
+    sequence += 1
+    lastReception = System.nanoTime()
+    (msg, seq)
   }
 
   def processHello(hello: Hello) = {
@@ -208,20 +211,18 @@ class ServerConnection(val server: Server, val socket: Socket) extends StrictLog
     clientHelloPromise.complete(clientHello)
   }
 
-  def processMessage(frame: MessageFrame) = {
+  def processMessage(frame: MessageFrame, seq: Int) = {
     val body = frame.body.head // Incoming messages only have one part
     val responder = if (frame.respondable) {
       receivedRespondable += 1
       val now = System.nanoTime()
-      Some(new Responder(handler, sequence, now, frame.timeout))
+      Some(new Responder(handler, seq, now, frame.timeout))
     } else {
       receivedUnrespondable += 1
       None
     }
     val message = Message(frame.attributes, body :: Nil  /* use :: to avoid mutable builders */)
     val incomingMessage = IncomingMessage(responder, from, clientName.get, server.requestMaxLength, message)
-    sequence += 1
-    lastReception = System.nanoTime()
     offer(server.receivingQueue, incomingMessage, finalized)
   }
 
