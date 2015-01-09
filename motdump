@@ -36,6 +36,7 @@ def read_loop():
 	data = sock.recv(buffersize)
 	while data:
 		sys.stdout.write(data)
+		sys.stdout.flush()
 		data = sock.recv(buffersize)
 
 sock.settimeout(None) # data will arrive when it will

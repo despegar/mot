@@ -6,7 +6,7 @@ trait Promise[-A] {
    *  Complete the promise with either an exception or a value.
    *  @param result Either the value or the exception to complete the promise with.
    */
-  def complete(result: A) = {
+  def complete(result: A): Unit = {
     if (!tryComplete(result)) 
       throw new IllegalStateException("Promise already completed.")
   }

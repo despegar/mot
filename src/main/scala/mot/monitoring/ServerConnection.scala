@@ -29,12 +29,9 @@ class ServerConnection(context: Context) extends MultiCommandHandler {
       }
       LiveTabler.draw(
         partWriter,
-        Col[Int]("SND-QUEUE", 9, Right),
         Col[Long]("REQ-RCVD", 9, Right),
         Col[Long]("MSG-RCVD", 9, Right),
         Col[Long]("RES-SENT", 9, Right),
-        Col[Long]("TOO-LATE", 9, Right),
-        Col[Long]("EXP-QUEUE", 9, Right),
         Col[Long]("TOO-LARGE", 9, Right),
         Col[Long]("KB-READ", 9, Right),
         Col[Long]("KB-WRITTEN", 10, Right),
@@ -46,8 +43,6 @@ class ServerConnection(context: Context) extends MultiCommandHandler {
           val respondable = new Differ(connection.receivedRespondable _)
           val unrespondable = new Differ(connection.receivedUnrespondable _)
           val sent = new Differ(connection.sentResponses _)
-          val tooLate = new Differ(connection.tooLateResponses)
-          val expiredInQueue = new Differ(connection.expiredInQueue _)
           val tooLarge = new Differ(connection.tooLargeResponses)
           val bytesRead = new Differ(connection.readBuffer.bytesCount)
           val bytesWriten = new Differ(connection.writeBuffer.bytesCount)
@@ -59,12 +54,9 @@ class ServerConnection(context: Context) extends MultiCommandHandler {
           while (true) {
             Thread.sleep(Commands.liveInterval)
             printer(
-              connection.sendingQueue.size,
               respondable.diff(),
               unrespondable.diff(),
               sent.diff(),
-              tooLate.diff(),
-              expiredInQueue.diff(),
               tooLarge.diff(),
               bytesRead.diff() /^ 1024,
               bytesWriten.diff() /^ 1024,
@@ -88,12 +80,9 @@ class ServerConnection(context: Context) extends MultiCommandHandler {
         case e: CommandException => return e.getMessage
       }
       "" +
-        f"Sending queue size:                  ${connection.sendingQueue.size}%11d\n" +
         f"Total messages received:             ${connection.receivedRespondable}%11d\n" +
         f"Total requests received:             ${connection.receivedUnrespondable}%11d\n" +
         f"Total responses sent:                ${connection.sentResponses}%11d\n" +
-        f"Total responses producted too late:  ${connection.tooLateResponses.get}%11d\n" +
-        f"Total responses expired in queue:    ${connection.expiredInQueue}%11d\n" +
         f"Total responses that were too large: ${connection.tooLargeResponses.get}%11d\n" +
         f"Total bytes read:                    ${connection.readBuffer.bytesCount}%11d\n" +
         f"Total bytes written:                 ${connection.writeBuffer.bytesCount}%11d\n" +

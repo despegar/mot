@@ -6,14 +6,17 @@ import java.net.ServerSocket
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
-
 import scala.collection.JavaConversions.collectionAsScalaIterable
 import scala.util.control.NonFatal
-
 import com.typesafe.scalalogging.slf4j.StrictLogging
-
-import mot.Util.FunctionToRunnable
-import mot.Util.closeSocket
+import mot.util.Util.FunctionToRunnable
+import mot.util.Util.closeSocket
+import mot.impl.Protocol
+import mot.impl.ServerConnection
+import mot.util.Util
+import java.util.concurrent.ScheduledThreadPoolExecutor
+import mot.util.NamedThreadFactory
+import scala.concurrent.duration.Duration
 
 /**
  * Mot Server.
@@ -37,12 +40,15 @@ class Server(
   val name: String,
   val bindPort: Int,
   val bindAddress: InetAddress = InetAddress.getByName("0.0.0.0"),
-  val requestMaxLength: Int = 100000,
-  val receivingQueueSize: Int = 5000,
-  val sendingQueueSize: Int = 5000,
+  val maxAcceptedLength: Int = 100000,
+  val receivingQueueSize: Int = 1000,
+  val sendingQueueSize: Int = 1000,
   val readerBufferSize: Int = 10000,
-  val writerBufferSize: Int = 10000) extends StrictLogging {
+  val writerBufferSize: Int = 5000) extends MotParty with StrictLogging {
 
+  val sendingQueueSaturationThreshold = 0.85
+  val sendingQueueRecoveryThreshold = 0.4
+  
   private val serverSocket = new ServerSocket
   private val bindSocketAddress = new InetSocketAddress(bindAddress, bindPort)
   serverSocket.bind(bindSocketAddress)
@@ -60,7 +66,7 @@ class Server(
   context.registerServer(this)
   acceptThread.start()
 
-  private def acceptLoop() {
+  private def acceptLoop(): Unit = {
     try {
       while (true) {
         val socket = serverSocket.accept()
@@ -68,23 +74,15 @@ class Server(
         conn.start()
       }
     } catch {
-      case NonFatal(e) => context.uncaughtErrorHandler.handle(e)
+      case NonFatal(e) if closed => // pass
+      case NonFatal(e) if !closed => context.uncaughtErrorHandler.handle(e)
     }
   }
 
   /**
-   * Receive a message. Block until one is available.
-   */
-  def receive(): IncomingMessage = {
-    receivingQueue.take()
-  }
-  
-  /**
    * Receive a message. Block until one is available or the timeout expires.
    */
-  def receive(timeout: Long, unit: TimeUnit): IncomingMessage = {
-    receivingQueue.poll(timeout, unit)
-  }
+  def poll(timeout: Long, unit: TimeUnit): IncomingMessage = receivingQueue.poll(timeout, unit)
 
   /**
    * Close the server. Calling this method terminates all threads and connections.
@@ -92,9 +90,28 @@ class Server(
   def close(): Unit = {
     closed = true
     closeSocket(serverSocket)
+    flowExpirator.shutdown()
     acceptThread.join()
     connections.values.foreach(_.close())
+    connections.values.foreach(_.writerThread.join())
+    connections.values.foreach(_.readerThread.join())
     context.servers.remove(name)
   }
 
+  
+  private val flowExpirator = {
+    val ex = new ScheduledThreadPoolExecutor(1, new NamedThreadFactory(s"mot-server($name)-flow-expirator"))
+    val runDelay = Duration(60, TimeUnit.SECONDS)
+    ex.scheduleWithFixedDelay(flowExpiratorTask _, runDelay.length, runDelay.length, runDelay.unit)
+    ex
+  }
+
+  private def flowExpiratorTask(): Unit = {
+    try {
+      connections.values.foreach(_.responseFlows.removeOldFlows())
+    } catch {
+      case NonFatal(e) => context.uncaughtErrorHandler.handle(e)
+    }
+  }
+  
 }

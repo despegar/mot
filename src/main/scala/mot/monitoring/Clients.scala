@@ -19,16 +19,16 @@ class Clients(context: Context) extends SimpleCommandHandler {
       Col[Int]("MAX-SND-QUEUE", 13, Right),
       Col[Int]("READBUF-SIZE", 13, Right),
       Col[Int]("WRITEBUF-SIZE", 13, Right),
-      Col[Boolean]("PESSIMISTIC", 11, Left),
+      Col[String]("TOLERANCE", 11, Left),
       Col[Int]("CONNECTORS", 12, Right)) { printer =>
         for (client <- context.clients.values) {
           printer(
             client.name,
-            client.responseMaxLength,
+            client.maxAcceptedLength,
             client.sendingQueueSize,
             client.readerBufferSize,
             client.writerBufferSize,
-            client.pessimistic, 
+            client.tolerance.toString, 
             client.connectors.size)
         }
       }

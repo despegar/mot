@@ -1,15 +1,26 @@
 package mot
 
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.ThreadFactory
 import java.util.concurrent.TimeUnit
 import scala.collection.JavaConversions.collectionAsScalaIterable
 import scala.util.control.NonFatal
 import com.typesafe.scalalogging.slf4j.StrictLogging
 import io.netty.util.HashedWheelTimer
-import mot.Util.FunctionToRunnable
-import mot.util.UnaryFailingPromise
-import mot.util.FailingPromise
+import mot.util.Util.FunctionToRunnable
+import mot.impl.Protocol
+import mot.impl.ClientConnector
+import mot.impl.PendingResponse
+import java.util.concurrent.BlockingQueue
+import scala.util.Try
+import mot.util.Promise
+import mot.util.UnaryPromise
+import java.util.concurrent.ScheduledThreadPoolExecutor
+import mot.util.NamedThreadFactory
+import java.util.concurrent.atomic.AtomicInteger
+import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.duration.Duration
+import scala.util.Success
+import scala.util.Failure
 
 /**
  * Mot Client.
@@ -30,53 +41,54 @@ import mot.util.FailingPromise
 class Client(
   val context: Context,
   val name: String,
-  val responseMaxLength: Int = 100000,
-  val sendingQueueSize: Int = 5000,
+  val maxAcceptedLength: Int = 100000,
+  val sendingQueueSize: Int = 1000,
   val readerBufferSize: Int = 10000,
   val writerBufferSize: Int = 5000,
-  val connectorGcSec: Int = 600,
-  val pessimistic: Boolean = false) extends StrictLogging {
+  val connectorGc: FiniteDuration = Duration(600, TimeUnit.SECONDS),
+  val tolerance: Duration = Duration.Inf) extends MotParty with StrictLogging {
 
-  private val connectorGcMs = TimeUnit.SECONDS.toMillis(connectorGcSec)
+  private val idCounter = new AtomicInteger
 
+  def createFlow() = new ClientFlow(idCounter.getAndIncrement(), this)
+
+  val mainFlow = createFlow() // main flow is always created
   private[mot] val connectors = new ConcurrentHashMap[Address, ClientConnector]
 
   @volatile private var closed = false
 
-  private val expiratorThread = new Thread(connectorExpirator _, s"mot($name)-connector-expirator")
-
-  Protocol.checkName(name)
-  context.registerClient(this)
-  expiratorThread.start()
-
-  private[mot] val promiseExpirator = {
-    val tf = new ThreadFactory {
-      def newThread(r: Runnable) = new Thread(r, s"mot($name)-promise-expiratior")
-    }
-    new HashedWheelTimer(tf, 200 /* tick duration */ , TimeUnit.MILLISECONDS, 1000 /* ticks per wheel */ )
+  private val connectorExpirator = {
+    val ex = new ScheduledThreadPoolExecutor(1, new NamedThreadFactory(s"mot($name)-connector-expirator"))
+    val runDelay = Duration(1, TimeUnit.SECONDS)
+    ex.scheduleWithFixedDelay(connectorExpiratorTask _, runDelay.length, runDelay.length, runDelay.unit)
+    ex
   }
 
-  private def connectorExpirator() = {
+  private def connectorExpiratorTask() = {
     try {
-      val runDelayMs = 1000
-      val connectorGcNs = TimeUnit.SECONDS.toNanos(connectorGcSec)
-      while (!closed) {
-        val threshold = System.nanoTime() - connectorGcNs
-        val it = connectors.entrySet.iterator
-        while (it.hasNext) {
-          val entry = it.next
-          val (target, connector) = (entry.getKey, entry.getValue)
-          if (connector.lastUse < threshold) {
-            it.remove()
-            connector.close()
-          }
+      val threshold = System.nanoTime() - connectorGc.toNanos
+      val it = connectors.entrySet.iterator
+      while (it.hasNext) {
+        val entry = it.next
+        val (target, connector) = (entry.getKey, entry.getValue)
+        if (connector.lastUse < threshold) {
+          logger.debug(s"Expiring connector to ${connector.target} after $connectorGc of inactivity")
+          it.remove()
+          connector.close()
         }
-        Thread.sleep(runDelayMs)
       }
     } catch {
       case NonFatal(e) => context.uncaughtErrorHandler.handle(e)
     }
   }
+
+  Protocol.checkName(name)
+  context.registerClient(this)
+
+  private[mot] val promiseExpirator = new HashedWheelTimer(
+    new NamedThreadFactory(s"mot($name)-promise-expiratior"),
+    200 /* tick duration */ , TimeUnit.MILLISECONDS,
+    1000 /* ticks per wheel */ )
 
   private def getConnector(target: Address) = {
     var connector = connectors.get(target)
@@ -92,92 +104,97 @@ class Client(
         }
       }
     }
+    connector.currentConnection match {
+      case Success(conn) => 
+        // pass
+      case Failure(ex) =>
+        val now = System.nanoTime()
+        val delay = Duration(now - connector.creationTime, TimeUnit.NANOSECONDS)
+        if (delay > tolerance)
+          throw new ErrorStateException(ex)
+    }
     connector
-  }
-
-  /**
-   * Offer a request. Succeed only if the message can be enqueued immediately.
-   * When the response arrives, complete the promise passed as an argument.
-   * @return whether the message could be enqueued or the corresponding queue overflowed
-   */
-  def offerRequest(target: Address, message: Message, timeoutMs: Int, promise: FailingPromise[Message]): Boolean = {
-    checkClosed()
-    checkTimeout(timeoutMs)
-    val connector = getConnector(target)
-    bePessimistic(connector)
-    connector.offerRequest(message, new PendingResponse(promise, timeoutMs, connector))
-  }  
-  
-  /**
-   * Send a request. Block until the message can be enqueued.
-   * When the response arrives, complete the promise passed as an argument.
-   */
-  def sendRequest(target: Address, message: Message, timeoutMs: Int, promise: FailingPromise[Message]): Unit = {
-    checkClosed()
-    checkTimeout(timeoutMs)
-    val connector = getConnector(target)
-    bePessimistic(connector)
-    connector.putRequest(message, new PendingResponse(promise, timeoutMs, connector))
   }
 
   /**
    * Send a request and block until the response arrives or the timeout expires.
    */
-  def getResponse(target: Address, message: Message, timeoutMs: Int): Message = {
-    val promise = new UnaryFailingPromise[Message]
-    sendRequest(target, message, timeoutMs, promise)
+  def getResponse(target: Address, message: Message, timeoutMs: Int, flow: ClientFlow = mainFlow): Message = {
+    val promise = new UnaryPromise[IncomingResponse]
+    offerRequest(target, message, timeoutMs, promise, flow, Long.MaxValue, TimeUnit.DAYS) // long enough
     // Block forever at the promise level, because Mot's timeout will make it fail eventually
-    promise.result().get
+    promise.result().result.get
   }
 
   /**
-   * Send a message. Block until it can be enqueued.
+   * Offer a request. When the response arrives, complete the promise passed as an argument.
+   * @return whether the message could be enqueued or the corresponding queue overflowed
    */
-  def sendMessage(target: Address, message: Message): Unit = {
+  def offerRequest(
+    target: Address,
+    message: Message,
+    timeoutMs: Int,
+    promise: Promise[IncomingResponse],
+    flow: ClientFlow,
+    timeout: Long,
+    unit: TimeUnit): Boolean = {
     checkClosed()
+    if (!flow.isOpen)
+      throw new IllegalStateException("Cannot send messages associated with a closed flow")
+    checkTimeout(timeoutMs)
     val connector = getConnector(target)
-    bePessimistic(connector)
-    connector.putMessage(message)
+    flow.markUse()
+    val pendingResponse = new PendingResponse(promise, timeoutMs, connector, flow)
+    connector.offerRequest(message, pendingResponse, timeout, unit)
   }
-  
+
+  def offerRequest(
+    target: Address, message: Message, timeoutMs: Int, promise: Promise[IncomingResponse], flow: ClientFlow): Boolean =
+    offerRequest(target, message, timeoutMs, promise, flow, 0, TimeUnit.NANOSECONDS)
+
+  def offerRequest(
+    target: Address, message: Message, timeoutMs: Int, promise: Promise[IncomingResponse], timeout: Long, unit: TimeUnit): Boolean =
+    offerRequest(target, message, timeoutMs, promise, mainFlow, timeout, unit)
+
+  def offerRequest(
+    target: Address, message: Message, timeoutMs: Int, promise: Promise[IncomingResponse]): Boolean =
+    offerRequest(target, message, timeoutMs, promise, mainFlow, 0, TimeUnit.NANOSECONDS)
+
   /**
-   * Offer a message. Succeed only if it can be enqueued immediately.
+   * Offer a message.
    * @return true if the message could be enqueued, false otherwise
    */
-  def offerMessage(target: Address, message: Message): Boolean = {
+  def offerMessage(target: Address, message: Message, timeout: Long, unit: TimeUnit): Boolean = {
     checkClosed()
     val connector = getConnector(target)
-    bePessimistic(connector)
-    connector.offerMessage(message)
+    connector.offerMessage(message, timeout, unit)
   }
+
+  def offerMessage(target: Address, message: Message): Boolean =
+    offerMessage(target, message, 0, TimeUnit.NANOSECONDS)
 
   private def checkTimeout(timeoutMs: Int) = {
-    if (timeoutMs > connectorGcMs)
-      throw new IllegalArgumentException(s"Request timeout cannot be longer than client GC time ($connectorGcMs sec.)")
-  }
-
-  private def bePessimistic(connector: ClientConnector) = {
-    if (pessimistic) {
-      connector.lastConnectingError.foreach { e =>
-        throw new ErrorStateException(e)
-      }
-    }
+    if (timeoutMs > connectorGc.toMillis)
+      throw new IllegalArgumentException(s"Request timeout cannot be longer than client GC time ($connectorGc)")
   }
 
   private def checkClosed() = {
     if (closed)
-      throw new ClientClosedException
+      throw new IllegalStateException("Client closed")
   }
 
   /**
    * Close the client. Calling this method terminates all threads and connections.
    */
   def close(): Unit = {
+    logger.debug("Closing client " + name)
     closed = true
     context.clients.remove(name)
     connectors.values.foreach(_.close())
     promiseExpirator.stop()
+    connectorExpirator.shutdown()
   }
 
-}	
+  override def toString() = s"Client(name=$name)"
 
+}	

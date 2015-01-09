@@ -1,17 +1,18 @@
 package mot
 
-import scala.collection.immutable
+import java.net.InetSocketAddress
 
 case class Address(host: String, port: Int) {
   override def toString() = s"$host:$port"
 }
 
 object Address {
+  
   def fromString(str: String): Address = {
-    val parts = str.split(":").to[immutable.Seq]
-    if (parts.size != 2)
+    val parts = str.split(":", 2)
+    if (parts.length != 2)
       throw new IllegalArgumentException("Cannot parse target: " + str)
-    val immutable.Seq(host, portStr) = parts
+    val (host, portStr) = (parts(0), parts(1))
     val port = try {
       portStr.toInt
     } catch {
@@ -19,4 +20,7 @@ object Address {
     }
     Address(host, port)
   }
+  
+  def fromInetSocketAddress(isa: InetSocketAddress): Address = Address(isa.getAddress.getHostAddress, isa.getPort)
+  
 }

@@ -1,8 +1,9 @@
 package mot.buffer
 
-import java.nio.ByteBuffer
 import java.io.InputStream
 import java.io.EOFException
+import mot.util.Util
+import mot.util.ByteArray
 
 /**
  * A buffer for reading bytes from an InputStream. At any time, the buffer is partitioned into three sections,
@@ -13,6 +14,8 @@ import java.io.EOFException
  */
 class ReadBuffer(val is: InputStream, val bufferSize: Int) {
 
+  import ReadBuffer._
+  
   val array = Array.ofDim[Byte](bufferSize)
 
   private var highPosition = 0
@@ -34,11 +37,36 @@ class ReadBuffer(val is: InputStream, val bufferSize: Int) {
   def fullReadCount() = _fullReadCount
   def bytesCount() = _bytesCount
   
+  private var processedCount = 0L
+  private var processedMark = -1L
+  private var limit = -1
+  
+  def setLimit(limit: Int): Unit = {
+    this.limit = limit
+    processedMark = processedCount
+  }
+  
+  def resetLimit() = {
+    if (processedMark == -1)
+      throw new IllegalStateException("No previous limit")
+    val res = remainingLimit
+    processedMark = -1
+    res
+  }
+  
+  def hasLimit() = processedMark != -1
+  
+  def remainingLimit() = {
+    if (processedMark == -1)
+      throw new IllegalStateException("No previous limit")
+    limit - (processedCount - processedMark).toInt
+  }
+  
   def clear() {
     lowPosition = 0
     highPosition = 0
   }
-
+  
   def compress() {
     val length = pending()
     if (length > 0) {
@@ -50,7 +78,7 @@ class ReadBuffer(val is: InputStream, val bufferSize: Int) {
     }
   }
 
-  def fill() {
+  private def fill() {
     if (!isCompressed)
       compress()
     val bytesRead = is.read(array, highPosition, freeSpace)
@@ -63,49 +91,97 @@ class ReadBuffer(val is: InputStream, val bufferSize: Int) {
       _fullReadCount += 1
   }
 
-  def transferToByteBuffer(targetBuffer: ByteBuffer, length: Int) {
+  def getByteArray(length: Int): ByteArray = {
+    val targetBuffer = ByteArray.allocate(length)
+    if (hasLimit && length > remainingLimit)
+      throw new LimitOverflowException(limit)
     var bytesTransfered = 0
     while (bytesTransfered < length) {
       if (!hasPending)
         fill()
       val bytesToTransfer = math.min(pending, length - bytesTransfered)
-      targetBuffer.put(array, lowPosition, bytesToTransfer)
+      System.arraycopy(array, lowPosition, targetBuffer.array, targetBuffer.offset + bytesTransfered, bytesToTransfer)
       lowPosition += bytesToTransfer
       bytesTransfered += bytesToTransfer
     }
+    processedCount += bytesTransfered
+    targetBuffer
   }
 
+  def discard(length: Int) {
+    if (hasLimit && length > remainingLimit)
+      throw new LimitOverflowException(limit)
+    var bytesDiscarded = 0
+    while (bytesDiscarded < length) {
+      if (!hasPending)
+        fill()
+      val bytesToDiscard = math.min(pending, length - bytesDiscarded)
+      lowPosition += bytesToDiscard
+      bytesDiscarded += bytesToDiscard
+    }
+    processedCount += bytesDiscarded    
+  }
+  
   def get() = {
+    if (hasLimit && remainingLimit < 1)
+      throw new LimitOverflowException(limit)
     if (!hasPending)
       fill()
     val res = array(lowPosition)
     lowPosition += 1
+    processedCount += 1
     res
   }
 
-  /*
-   * Use network (big-endian) byte order
-   */
-  def getShort() = {
-    val shortBytes = 2
-    while (pending < shortBytes)
+  def get8() = {
+    val bytes = 1
+    if (hasLimit && remainingLimit < bytes)
+      throw new LimitOverflowException(limit)
+    while (pending < bytes)
       fill()
-    val res = ReadBuffer.getShortBigEndian(array, lowPosition)
-    lowPosition += shortBytes
+    val res = make8(array(lowPosition))
+    lowPosition += bytes
+    processedCount += bytes
+    res
+  }  
+  
+  def get16() = {
+    val bytes = Util.bytes16
+    if (hasLimit && remainingLimit < bytes)
+      throw new LimitOverflowException(limit)
+    while (pending < bytes)
+      fill()
+    val res = make16(array(lowPosition), array(lowPosition + 1))
+    lowPosition += bytes
+    processedCount += bytes
+    res
+  }  
+  
+  def get24() = {
+    val bytes = Util.bytes24
+    if (hasLimit && remainingLimit < bytes)
+      throw new LimitOverflowException(limit)
+    while (pending < bytes)
+      fill()
+    val res = make24(array(lowPosition), array(lowPosition + 1), array(lowPosition + 2))
+    lowPosition += bytes
+    processedCount += bytes
     res
   }
   
-  /*
-   * Use network (big-endian) byte order
-   */
-  def getInt() = {
-    val intBytes = 4
-    while (pending < intBytes)
+  def get31() = {
+    val bytes = Util.bytes31
+    if (hasLimit && remainingLimit < bytes)
+      throw new LimitOverflowException(limit)
+    while (pending < bytes)
       fill()
-    val res = ReadBuffer.getIntBigEndian(array, lowPosition)
-    lowPosition += intBytes
+    val res = make31(array(lowPosition), array(lowPosition + 1), array(lowPosition + 2), array(lowPosition + 3))
+    if (res < 0)
+      throw new EncodingException("Highest order bit cannot be set in 31 bit integers")      
+    lowPosition += bytes
+    processedCount += bytes
     res
-  }
+  }  
   
   override def toString() = {
     val hexContents = array.map("%02X" format _).mkString(",")
@@ -118,12 +194,23 @@ class ReadBuffer(val is: InputStream, val bufferSize: Int) {
 
 object ReadBuffer {
   
-  def getShortBigEndian(array: Array[Byte], pos: Int) = makeShort(array(pos), array(pos + 1))
-  
-  def getIntBigEndian(array: Array[Byte], pos: Int) = 
-    makeInt(array(pos), array(pos + 1), array(pos + 2), array(pos + 3))
+  // Methods below read big-endian (network) unsigned integers
     
-  def makeShort(b1: Byte, b0: Byte) = ((b1 << 8) | (b0 & 0xff)).toShort
-  def makeInt(b3: Byte, b2: Byte, b1: Byte, b0: Byte) = (b3 << 24) | ((b2 << 16) & 0xffffff) | ((b1 << 8) & 0xffff) | (b0 & 0xff)
+  def make8(b0: Byte) = (b0 & 0xff).toShort
   
+  def make16(b1: Byte, b0: Byte) = 
+    (b1 << 8)  & 0xffff | 
+    b0 & 0xff
+  
+  def make24(b2: Byte, b1: Byte, b0: Byte) = 
+    (b2 << 16) & 0xffffff | 
+    (b1 << 8) & 0xffff | 
+    b0 & 0xff
+  
+  def make31(b3: Byte, b2: Byte, b1: Byte, b0: Byte) = 
+    (b3 << 24) | 
+    (b2 << 16) & 0xffffff | 
+    (b1 << 8) & 0xffff | 
+    b0 & 0xff  
+    
 }

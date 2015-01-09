@@ -32,11 +32,8 @@ class ClientConnector(context: Context) extends MultiCommandHandler {
         partWriter,
         Col[Int]("SND-QUEUE", 9, Right),
         Col[Int]("PENDING", 8, Right),
-        Col[Long]("MSG-ENQ", 9, Right),
         Col[Long]("MSG-SENT", 9, Right),
-        Col[Long]("REQ-ENQ", 9, Right),
         Col[Long]("REQ-SENT", 9, Right),
-        Col[Long]("RES-EXPIR", 9, Right),
         Col[Long]("RES-RECV", 9, Right),
         Col[Long]("TIMEOUT", 9, Right),
         Col[Long]("REQ-TOO-BIG", 11, Right),
@@ -47,11 +44,8 @@ class ClientConnector(context: Context) extends MultiCommandHandler {
         Col[Long]("DIR-WRITES", 10, Right),
         Col[Long]("SOCK-READS", 10, Right),
         Col[Long]("READ-FULL", 9, Right)) { printer =>
-          val messageEnqueued = new Differ(connector.unrespondableEnqueued)
           val messageSent = new Differ(connector.unrespondableSentCounter _)
-          val requestEnqueued = new Differ(connector.respondableEnqueued)
           val requestSent = new Differ(connector.respondableSentCounter _)
-          val requestExpiredInQueue = new Differ(connector.expiredInQueue _)
           val responseReceived = new Differ(connector.responsesReceivedCounter _)
           val timeouts = new Differ(connector.timeoutsCounter _)
           val sendTooLarge = new Differ(connector.triedToSendTooLargeMessage _)
@@ -67,13 +61,10 @@ class ClientConnector(context: Context) extends MultiCommandHandler {
               return "Disconnected"
             Thread.sleep(Commands.liveInterval)
             printer(
-              connector.sendingQueue.size,
-              connection.pendingResponses.size,
-              messageEnqueued.diff(),
+              connector.messagesQueue.size,
+              connector.pendingResponses.size,
               messageSent.diff(),
-              requestEnqueued.diff(),
               requestSent.diff(),
-              requestExpiredInQueue.diff(),
               responseReceived.diff(),
               timeouts.diff(),
               sendTooLarge.diff(),
@@ -100,13 +91,10 @@ class ClientConnector(context: Context) extends MultiCommandHandler {
       }
       val connection = connector.currentConnection.getOrElse(return "Not currently connected")
       "" +
-        f"Sending queue size:                ${connector.sendingQueue.size}%11d\n" +
-        f"Pending responses:                 ${connection.pendingResponses.size}%11d\n" +
-        f"Total messages enqueued:           ${connector.unrespondableEnqueued.get}%11d\n" +
+        f"Sending queue size:                ${connector.messagesQueue.size}%11d\n" +
+        f"Pending responses:                 ${connector.pendingResponses.size}%11d\n" +
         f"Total messages sent:               ${connector.unrespondableSentCounter}%11d\n" +
-        f"Total requests enqueued:           ${connector.respondableEnqueued.get}%11d\n" +
         f"Total requests sent:               ${connector.respondableSentCounter}%11d\n" +
-        f"Total requests expired             ${connector.expiredInQueue}%11d\n" +
         f"Total responses received:          ${connector.responsesReceivedCounter}%11d\n" +
         f"Total timed out requests:          ${connector.timeoutsCounter}%11d\n"
         f"Total requests too large:          ${connector.triedToSendTooLargeMessage}%11d\n"

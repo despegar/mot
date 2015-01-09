@@ -2,7 +2,7 @@ package mot.monitoring
 
 import java.net.ServerSocket
 import java.net.InetSocketAddress
-import mot.Util.FunctionToRunnable
+import mot.util.Util.FunctionToRunnable
 import scala.io.Source
 import scala.util.control.NonFatal
 import java.net.SocketException
@@ -12,6 +12,8 @@ import mot.Context
 import scala.collection.immutable
 import com.typesafe.scalalogging.slf4j.StrictLogging
 import java.nio.charset.StandardCharsets
+import mot.util.Util
+import java.io.IOException
 
 class Commands(context: Context, monitoringPort: Int) extends StrictLogging with MultiCommandHandler {
 
@@ -19,13 +21,27 @@ class Commands(context: Context, monitoringPort: Int) extends StrictLogging with
 
   def start() = {
     serverSocket.bind(new InetSocketAddress(monitoringPort))
-    new Thread(doIt _, "mot-commands-acceptor").start()
+    acceptorThread.start()
+  }
+  
+  def stop() {
+    closed = true
+    Util.closeSocket(serverSocket)
+    acceptorThread.join()
   }
 
-  def doIt() {
-    while (true) {
-      val socket = serverSocket.accept()
-      new Thread(() => processClient(socket), "mot-command-handler-for-" + socket.getRemoteSocketAddress).start()
+  val acceptorThread = new Thread(acceptLoop _, "mot-commands-acceptor")
+
+  @volatile var closed = false
+
+  def acceptLoop() {
+    try {
+      while (true) {
+        val socket = serverSocket.accept()
+        new Thread(() => processClient(socket), "mot-command-handler-for-" + socket.getRemoteSocketAddress).start()
+      }
+    } catch {
+      case e: IOException if closed => // pass
     }
   }
 
@@ -68,7 +84,8 @@ class Commands(context: Context, monitoringPort: Int) extends StrictLogging with
     new ClientConnector(context),
     new Servers(context),
     new ServerConnections(context),
-    new ServerConnection(context))
+    new ServerConnection(context),
+    new ServerFlows(context))
 
 }
 

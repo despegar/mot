@@ -5,6 +5,8 @@ import mot.Context
 import collection.JavaConversions._
 import scala.collection.immutable
 import java.util.concurrent.TimeUnit
+import scala.util.Success
+import scala.util.Failure
 
 class ClientConnectors(context: Context) extends SimpleCommandHandler {
 
@@ -26,16 +28,16 @@ class ClientConnectors(context: Context) extends SimpleCommandHandler {
       Col[Int]("PENDING", 7, Right),
       Col[String]("LAST ERROR", 20, Left)) { printer =>
         for (client <- context.clients.values; connector <- client.connectors.values) {
-          val lastError = connector.lastConnectingError.map(_.getMessage).getOrElse("-")
-          val (local, remote, serverName, maxLength, pending) = connector.currentConnection match {
-            case Some(conn) => (
-                conn.socket.getLocalAddress.getHostAddress + ":" + conn.socket.getLocalPort,
-                conn.socket.getInetAddress.getHostAddress + ":" + conn.socket.getPort,
-                conn.serverName,
-                conn.requestMaxLength,
-                conn.pendingResponses.size)
-            case None =>
-              ("-", "-", None, None, 0)
+          val (local, remote, serverName, maxLength, pending, lastError) = connector.currentConnection match {
+            case Success(conn) => (
+                conn.socket.impl.getLocalAddress.getHostAddress + ":" + conn.socket.impl.getLocalPort,
+                conn.socket.impl.getInetAddress.getHostAddress + ":" + conn.socket.impl.getPort,
+                conn.remoteNameOption,
+                conn.remoteMaxLength,
+                connector.pendingResponses.size,
+                "-")
+            case Failure(ex) =>
+              ("-", "-", None, None, 0, ex.getMessage)
           }
           val now = System.nanoTime()
           val idle = TimeUnit.NANOSECONDS.toSeconds(now - connector.lastUse)
@@ -43,7 +45,7 @@ class ClientConnectors(context: Context) extends SimpleCommandHandler {
             client.name,
             connector.target.toString,
             idle,
-            connector.sendingQueue.size,
+            connector.messagesQueue.size,
             local,
             remote,
             serverName.getOrElse("-"),

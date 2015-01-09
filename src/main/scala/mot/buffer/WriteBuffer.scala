@@ -1,9 +1,12 @@
 package mot.buffer
 
 import java.io.OutputStream
+import mot.util.ByteArray
 
 class WriteBuffer(val os: OutputStream, val bufferSize: Int) {
 
+  import WriteBuffer._
+  
   val array = Array.ofDim[Byte](bufferSize)
   
   private var position = 0
@@ -24,58 +27,38 @@ class WriteBuffer(val os: OutputStream, val bufferSize: Int) {
   def directWriteCount() = _directWriteCount
   def fullWriteCount() = _fullWriteCount
   
+  private var _lastFlush = System.nanoTime()
+  
+  def lastFlush() = _lastFlush
+  
   def put(byte: Byte) {
     if (isFull)
       flush()
     array(position) = byte
     position += 1
   }
-
-  def put(array: Array[Byte], offset: Int, length: Int) {
-    if (length > bufferSize) {
+  
+  def put(toWrite: ByteArray) {
+    if (array.length > bufferSize) {
       /* 
        * No point in buffering if the length of the array is bigger than the buffer, a direct write avoids the copies 
        * and only does one 'send' system call
        */
       flush()
-      os.write(array, offset, length)
-      _bytesCount += length
+      os.write(toWrite.array, toWrite.offset, toWrite.length)
+      _bytesCount += toWrite.length
       _directWriteCount += 1
     } else {
       var bytesPut = 0
-      while (bytesPut < length) {
-        if (isFull)
+      while (bytesPut < toWrite.length) {
+        if (isFull())
           flush()
-        val bytesToPut = math.min(remaining, length - bytesPut)
-        System.arraycopy(array, offset + bytesPut, this.array, position, bytesToPut)
+        val bytesToPut = math.min(remaining, toWrite.length - bytesPut)
+        System.arraycopy(toWrite.array, toWrite.offset + bytesPut, this.array, position, bytesToPut)
         position += bytesToPut
         bytesPut += bytesToPut
       }
     }
-  }
-
-  def put(array: Array[Byte]): Unit = put(array, 0, array.length)
-
-  /**
-   * Put short value in network (big-endian) byte order.
-   */
-  def putShort(value: Short) = putShortBigEndian(value)
-
-  /**
-   * Put int value in network (big-endian) byte order.
-   */
-  def putInt(value: Int) = putIntBigEndian(value)
-
-  private def putShortBigEndian(x: Short) {
-    put(WriteBuffer.byte1(x))
-    put(WriteBuffer.byte0(x))
-  }
-
-  private def putIntBigEndian(x: Int) {
-    put(WriteBuffer.byte3(x))
-    put(WriteBuffer.byte2(x))
-    put(WriteBuffer.byte1(x))
-    put(WriteBuffer.byte0(x))
   }
 
   def flush() {
@@ -87,13 +70,59 @@ class WriteBuffer(val os: OutputStream, val bufferSize: Int) {
         _fullWriteCount += 1
       position = 0
     }
+    _lastFlush = System.nanoTime()
   }
 
+  // All methods below write big-endian (network) unsigned integers
+  
+  def put8(x: Short) {
+    assert(x >= 0)
+    assert(x < Max8)
+    put(byte0(x))
+  }
+  
+  def put16(x: Int) {
+    assert(x >= 0)
+    assert(x < Max16)
+    put(byte1(x))
+    put(byte0(x))
+  }
+
+  def put24(x: Int) {
+    assert(x >= 0)
+    assert(x < Max24)
+    put(byte2(x))
+    put(byte1(x))
+    put(byte0(x))
+  }
+  
+  def put31(x: Int) {
+    assert(x >= 0)
+    assert(x < Max31)
+    put(byte3(x))
+    put(byte2(x))
+    put(byte1(x))
+    put(byte0(x))
+  }
+  
 }
 
 object WriteBuffer {
+  
+  val Max8 = 1 << 8
+  val Max16 = 1 << 16
+  val Max24 = 1 << 24
+  val Max31 = 1L << 31
+  val Max32 = 1L << 32
+  
+  def byte3(x: Long) = (x >> 24).toByte
+  def byte2(x: Long) = (x >> 16).toByte
+  def byte1(x: Long) = (x >> 8).toByte
+  def byte0(x: Long) = x.toByte
+  
   def byte3(x: Int) = (x >> 24).toByte
   def byte2(x: Int) = (x >> 16).toByte
   def byte1(x: Int) = (x >> 8).toByte
   def byte0(x: Int) = x.toByte
+  
 }

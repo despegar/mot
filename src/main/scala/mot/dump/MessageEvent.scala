@@ -1,47 +1,35 @@
 package mot.dump
 
-import mot.Connection
-import mot.message.MessageBase
+import mot.impl.Connection
+import mot.protocol.Frame
 import java.text.SimpleDateFormat
 import java.io.OutputStream
-import java.nio.charset.StandardCharsets.UTF_8
-import java.net.InetSocketAddress
+import java.nio.charset.StandardCharsets.US_ASCII
+import mot.protocol.AttributesSupport
+import mot.protocol.BodySupport
+import mot.protocol.MessageTypes
 
-object Direction extends Enumeration {
-  val Incoming, Outgoing = Value
-}
-
-case class MessageEvent(timestampMs: Long, conn: Connection, direction: Direction.Value, message: MessageBase) {
+case class MessageEvent(conn: Connection, direction: Direction.Value, message: Frame) extends Event {
   
   def print(os: OutputStream, sdf: SimpleDateFormat, showBody: Boolean, maxBodyLength: Int, showAttributes: Boolean) = {
-    val arrow = direction match {
-      case Direction.Incoming => '<'
-      case Direction.Outgoing => '>'
-    }
-    val local = formatAddress(conn.localAddress)
-    val remote = formatAddress(conn.remoteAddress)
-    val firstLine = 
-      s"${sdf.format(timestampMs)} ${conn.localName}[$local] $arrow ${conn.remoteName}[$remote] ${message.dump}\n"
-    os.write(firstLine.getBytes(UTF_8))
+    val ts = sdf.format(timestampMs) 
+    val parties = s"$fromName[$fromAddress] > $toName[$toAddress]"
+    val messageType = MessageTypes.reverse(message.messageType)
+    val firstLine = s"$ts [mot] $parties $messageType, length ${message.length}, ${message.dump}\n"
+    os.write(firstLine.getBytes(US_ASCII))
     if (showAttributes) {
-      for ((name, value) <- message.attributes) {
-        val valueStr = new String(value, UTF_8)
-        os.write(s"$name: $valueStr\n".getBytes(UTF_8))
+      message match {
+        case am: AttributesSupport => am.dumpAttributes(os)
+        case _ => // pass
       }
     }
-    if (showBody && message.bodyLength > 0) {
-      var remaining = maxBodyLength
-      for (buffer <- message.body) {
-        val show = math.min(remaining, buffer.limit)
-        os.write(buffer.array, buffer.arrayOffset, show)
-        remaining -= show
+    if (showBody) {
+      message match {
+        case bm: BodySupport => bm.dumpBody(os, maxBodyLength)
+        case _ => // pass
       }
-      os.write('\n')
     }
-  }
-  
-  def formatAddress(address: InetSocketAddress) = {
-    address.getAddress.getHostAddress + ":" + address.getPort
   }
   
 }
+

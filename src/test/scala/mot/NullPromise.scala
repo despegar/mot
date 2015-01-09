@@ -1,8 +1,7 @@
 package mot
 
-import scala.util.Try
-import mot.util.FailingPromise
+import mot.util.Promise
 
-object NullPromise extends FailingPromise[Any] {
-  def tryComplete(result: Try[Any]) = true
+object NullPromise extends Promise[Any] {
+  def tryComplete(result: Any) = true
 }

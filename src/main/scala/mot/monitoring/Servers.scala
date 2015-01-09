@@ -29,7 +29,7 @@ class Servers(context: Context) extends SimpleCommandHandler {
             server.name,
             server.bindAddress.getHostAddress,
             server.bindPort,
-            server.requestMaxLength,
+            server.maxAcceptedLength,
             server.receivingQueueSize,
             server.receivingQueue.size,
             server.sendingQueueSize,

@@ -1,9 +1,9 @@
 package mot.dump
 
-import mot.message.MessageBase
+import mot.protocol.Frame
 import java.net.ServerSocket
 import java.net.InetSocketAddress
-import mot.Util.FunctionToRunnable
+import mot.util.Util.FunctionToRunnable
 import java.net.Socket
 import java.net.SocketException
 import com.typesafe.scalalogging.slf4j.StrictLogging
@@ -20,49 +20,73 @@ import scala.io.Source
 import java.io.OutputStream
 import java.io.IOException
 import java.nio.charset.StandardCharsets.UTF_8
-import mot.Connection
 import java.util.concurrent.TimeUnit
+import mot.impl.Connection
+import mot.util.Util
 
 case class Listener(bufferSize: Int) {
-  val queue = new LinkedBlockingQueue[MessageEvent](bufferSize) 
+  val queue = new LinkedBlockingQueue[Event](bufferSize)
   val overflows = new AtomicLong
 }
 
 class Dumper(dumperPort: Int) extends StrictLogging {
 
-  def dump(connection: Connection, direction: Direction.Value, msg: MessageBase) = {
-    val listeners = currentListeners.keySet
-    if (!listeners.isEmpty) {
-      // do not construct event if there are no listeners
-      val event = MessageEvent(System.currentTimeMillis(), connection, direction, msg)
-      for (listener <- listeners) { 
-        val success = listener.queue.offer(event)
-        if (!success)
-          listener.overflows.incrementAndGet()
-      }
+  def dump(event: Event): Unit = {
+    // Optimize the very common case of no listeners
+    if (currentListeners.isEmpty)
+      return
+    // Avoid wrapping in Scala iterators, which add overhead
+    val it = currentListeners.keys
+    while (it.hasMoreElements) {
+      val listener = it.nextElement()
+      val success = listener.queue.offer(event)
+      if (!success)
+        listener.overflows.incrementAndGet()
     }
   }
-  
+
   val currentListeners = new ConcurrentHashMap[Listener, Boolean]
-  
-  val serverSocket = new ServerSocket()
+  val serverSocket = new ServerSocket
+  val acceptorThread = new Thread(acceptLoop _, "mot-dump-acceptor")
+
+  @volatile var closed = false
 
   def start() = {
     serverSocket.bind(new InetSocketAddress(dumperPort))
-    new Thread(doIt _, "mot-dump-acceptor").start()
+    acceptorThread.start()
   }
 
-  def doIt() {
-    while (true) {
-      val socket = serverSocket.accept()
-      new Thread(() => processClient(socket), "mot-dump-handler-for-" + socket.getRemoteSocketAddress).start()
+  def stop() {
+    closed = true
+    Util.closeSocket(serverSocket)
+    acceptorThread.join()
+  }
+
+  def listen(bufferSize: Int) = {
+    val listener = new Listener(bufferSize)
+    currentListeners.put(listener, true)
+    listener
+  }
+
+  def unlisten(listener: Listener): Unit = {
+    currentListeners.remove(listener)
+  }
+
+  def acceptLoop() {
+    try {
+      while (true) {
+        val socket = serverSocket.accept()
+        new Thread(() => processClient(socket), "mot-dump-handler-for-" + socket.getRemoteSocketAddress).start()
+      }
+    } catch {
+      case e: IOException if closed => // closing, exception expected
     }
   }
 
   val parser = new DumpFilterParser
-  
+
   class ArgumentError(msg: String) extends Exception(msg)
-  
+
   def processClient(socket: Socket) = {
     import StandardCharsets.UTF_8
     socket.setSoTimeout(100) // localhost should be fast
@@ -76,15 +100,14 @@ class Dumper(dumperPort: Int) extends StrictLogging {
       val showAttributes = params.get("attributes").map(_.toBoolean).getOrElse(false)
       val showBodyLength = params.get("length").map(_.toInt).getOrElse(1024)
       val bufferSize = params.get("buffer-size").map(_.toInt).getOrElse(10000)
-      val filterOpt = params.get("filter").map { str => 
+      val filterOpt = params.get("filter").map { str =>
         parser.parseAll(str) match {
           case parser.Success(result, next) => result
           case parser.NoSuccess((msg, error)) => throw new ArgumentError(s"Error parsing expression: $msg")
         }
       }
       val filter = filterOpt.getOrElse(AllFilter)
-      val listener = new Listener(bufferSize)
-      currentListeners.put(listener, true)
+      val listener = listen(bufferSize)
       try {
         @volatile var finished = false
         def eofReader() = try {
@@ -104,7 +127,7 @@ class Dumper(dumperPort: Int) extends StrictLogging {
         sdf.setTimeZone(TimeZone.getTimeZone("UTC"))
         var dumped = 0L
         var processed = 0L
-        while (!finished) {
+        while (!finished && !closed) {
           val event = listener.queue.poll(200, TimeUnit.MILLISECONDS)
           if (event != null) {
             if (filter.filter(event)) {
@@ -115,14 +138,16 @@ class Dumper(dumperPort: Int) extends StrictLogging {
           }
         }
         // EOF received, print summary
-        os.write(s"$processed messages processed\n".getBytes(UTF_8))
-        os.write(s"$dumped messages dumped\n".getBytes(UTF_8))
-        os.write(s"${listener.overflows} messages dropped\n".getBytes(UTF_8))
+        val summary =
+          s"$processed events occured and processed during capture (regardless of current filter)\n" +
+            s"${listener.overflows} dropped because the buffer was too small\n" +
+            s"$dumped events passed the filter and were dumped\n"
+        os.write(summary.getBytes(UTF_8))
       } finally {
-        currentListeners.remove(listener)
+        unlisten(listener)
       }
     } catch {
-      case e: ArgumentError => 
+      case e: ArgumentError =>
         logger.info(s"Invalid dump filter: " + e.getMessage)
         os.write(e.getMessage.getBytes(UTF_8))
         os.write('\n')
@@ -138,7 +163,7 @@ class Dumper(dumperPort: Int) extends StrictLogging {
           case NonFatal(e) => logger.error("Could not send message in catch block", e)
         }
     } finally {
-      socket.close()
+      Util.closeSocket(socket)
     }
   }
 
@@ -152,5 +177,5 @@ class Dumper(dumperPort: Int) extends StrictLogging {
     }
     pairs.toMap
   }
-  
+
 }

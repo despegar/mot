@@ -1,8 +1,8 @@
 package mot.dump
 
-import mot.message.MessageType
 import scala.util.parsing.combinator.syntactical.StandardTokenParsers
 import scala.util.parsing.combinator.lexical.StdLexical
+import mot.protocol.MessageTypes
 
 class DumpFilterParser extends StandardTokenParsers {
 
@@ -42,8 +42,8 @@ class DumpFilterParser extends StandardTokenParsers {
   def group = "(" ~> filter <~ ")"
 
   def messageType = "type" ~> ident ^? (
-    { case name if MessageType.isValid(name) => MessageTypeFilter(MessageType.withName(name)) },
-    name => s"invalid message type '$name', legal values are: ${MessageType.values.map(_.toString).mkString(",")}"
+    { case name if MessageTypes.isValid(name) => MessageTypeFilter(MessageTypes.names(name)) },
+    name => s"invalid message type '$name', legal values are: ${MessageTypes.names.keys.mkString(",")}"
   )
   
   def port = sideFilter.? ~ ("port" ~> numericLit) ^^ {
