@@ -6,6 +6,8 @@ import mot.protocol.MessageTypes
 
 class DumpFilterParser extends StandardTokenParsers {
 
+  import Filters._
+  
   override val lexical = new StdLexical {
     override def identChar = 
       letter | elem('_') | elem('-') | elem('.') | elem('*') | elem('+') | elem('?') | elem(':')
@@ -17,17 +19,17 @@ class DumpFilterParser extends StandardTokenParsers {
   lexical.delimiters ++= Seq("(", ")", "||", "&&", "!", "<", ">", "<=", ">=", "==", "~=", "[", "]")
   
   def filter: Parser[Filter] = branch ~ (or ~> filter).? ^^ {
-    case left ~ Some(right) => Disjunction(left, right)
+    case left ~ Some(right) => Disj(left, right)
     case unique ~ None => unique
   }
 
   def branch: Parser[Filter] = atom ~ (and ~> branch).? ^^ {
-    case left ~ Some(right) => Conjunction(left, right)
+    case left ~ Some(right) => Conj(left, right)
     case unique ~ None => unique
   }
 
   def atom = not.? ~ expr ^^ {
-    case Some(_) ~ expr => Negation(expr)
+    case Some(_) ~ expr => Neg(expr)
     case None ~ expr => expr
   }
 
@@ -36,36 +38,36 @@ class DumpFilterParser extends StandardTokenParsers {
   def not = "not" | "!"
   
   def expr = 
-    (messageType | port | host | direction | lengthFilter | attrValue | attrRegex | attrPresence | group).
-      withFailureMessage("illegal start of expression")
+    messageType | port | host | direction | lengthFilter | attrValue | attrRegex | attrPresence | group | 
+    failure("illegal expression")
   
   def group = "(" ~> filter <~ ")"
 
   def messageType = "type" ~> ident ^? (
-    { case name if MessageTypes.isValid(name) => MessageTypeFilter(MessageTypes.names(name)) },
-    name => s"invalid message type '$name', legal values are: ${MessageTypes.names.keys.mkString(",")}"
+    { case name if MessageTypes.isValid(name) => Type(MessageTypes.names(name)) },
+    { name => s"invalid message type '$name', legal values are: ${MessageTypes.names.keys.mkString(",")}" }
   )
   
   def port = sideFilter.? ~ ("port" ~> numericLit) ^^ {
     case Some(sideFilter) ~ number => Port(sideFilter, number.toInt)
-    case None ~ number => Port(Side.SourceOrDest, number.toInt)
+    case None ~ number => Port(Side.Any, number.toInt)
   }
   
   def host = sideFilter.? ~ ("host" ~> (ident | stringLit)) ^^ {
     case Some(sideFilter) ~ host => Host(sideFilter, host)
-    case None ~ host => Host(Side.SourceOrDest, host)
+    case None ~ host => Host(Side.Any, host)
   }
   
   def direction = incoming | outgoing
   
-  def incoming = "incoming" ^^^ DirectionFilter(Direction.Incoming)
-  def outgoing = "outgoing" ^^^ DirectionFilter(Direction.Outgoing)
+  def incoming = "incoming" ^^^ Dir(Direction.Incoming)
+  def outgoing = "outgoing" ^^^ Dir(Direction.Outgoing)
   
   def sideFilter = srcFilter | destFilter | srcOrDestFilter
   
   def srcFilter = "src" ^^^ Side.Source
   def destFilter = "dst" ^^^ Side.Dest
-  def srcOrDestFilter = "src" ~ "or" ~ "dst" ^^^ Side.SourceOrDest
+  def srcOrDestFilter = "src" ~ "or" ~ "dst" ^^^ Side.Any
   
   def lengthFilter = lengthLess | lengthGreater | lengthLessEqual | lengthGreaterEqual
   

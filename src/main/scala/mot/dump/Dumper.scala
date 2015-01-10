@@ -103,10 +103,10 @@ class Dumper(dumperPort: Int) extends StrictLogging {
       val filterOpt = params.get("filter").map { str =>
         parser.parseAll(str) match {
           case parser.Success(result, next) => result
-          case parser.NoSuccess((msg, error)) => throw new ArgumentError(s"Error parsing expression: $msg")
+          case parser.NoSuccess((msg, next)) => throw new ArgumentError(s"Error parsing expression: $msg")
         }
       }
-      val filter = filterOpt.getOrElse(AllFilter)
+      val filter = filterOpt.getOrElse(Filters.All)
       val listener = listen(bufferSize)
       try {
         @volatile var finished = false
