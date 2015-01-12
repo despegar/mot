@@ -44,6 +44,16 @@ Messages and requests can be send intermixed between the same parties. They shar
 
 Keeping messages relatively small (the actual size is actually configurable) also prevents head-of-line blocking from being an issue.
 
+Messages
+--------
+
+From a user's point of view, Mot messages consist of a delimited byte array. The maximum size of the array that can be received is communicated by each party in the connection handshake. Messages also support attributes: a sequence of name-value associations that can be used to pass metadata. The names are short ASCII string and the values are short byte arrays. Mot does not interpret the contents of the attributes in any way, they exist solely for the user's convenience. Attributes can be used to pass the header when encapsulating HTTP requests and responses.
+
+Wire Format
+-----------
+
+The protocol wire format is specified as a handful of frames. There are currently eight frame types, which are documented [here](src/main/scala/mot/protocol).
+
 Implementation
 --------------
 
