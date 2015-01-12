@@ -25,4 +25,7 @@ class ServerConnectionHandler(conn: ServerConnection) {
   def isSaturated(flowId: Int) = connection().flow(flowId).isSaturated()
   def isRecovered(flowId: Int) = connection().flow(flowId).isRecovered()
     
+  def remoteName() = connection().remoteAddress
+  def remoteAddress() = connection().remoteAddress
+  
 }
