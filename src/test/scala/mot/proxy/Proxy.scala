@@ -16,7 +16,7 @@ import java.util.concurrent.ConcurrentHashMap
 import mot.ClientFlow
 import mot.IncomingResponse
 import scala.collection.JavaConversions._
-import mot.impl.ServerConnectionHandler
+import mot.ServerConnectionHandler
 import mot.InvalidServerConnectionException
 import mot.util.Util.FunctionToRunnable
 import scala.util.control.NonFatal
@@ -66,7 +66,7 @@ class Proxy(val context: Context) extends StrictLogging {
 
   val responseQueue = new LinkedBlockingQueue[(IncomingResponse, Responder)](100000)
   val backendFlows = new ConcurrentHashMap[Address, ClientFlow]()
-  val closedFlows = new ConcurrentHashMap[FlowAssociation, Boolean]()
+  val closedFlows = new ConcurrentHashMap[FlowAssociation, ClientFlow]()
 
   val responseOverflow = new AtomicLong
   val messageErrors = new AtomicLong
@@ -176,11 +176,11 @@ class Proxy(val context: Context) extends StrictLogging {
             if (!responseSuccess)
               responseOverflow.incrementAndGet()
             try {
-              if (responder.connection.flow(responder.serverFlowId).isSaturated) {
+              if (responder.connectionHandler.isSaturated(responder.serverFlowId)) {
                 val backendFlow = incomingResponse.clientFlow
                 if (backendFlow.closeFlow())
                   logger.debug("Closing flow: " + backendFlow)
-                closedFlows.put(FlowAssociation(responder.connectionHandler, responder.serverFlowId, backendFlow), true)
+                closedFlows.put(FlowAssociation(responder.connectionHandler, responder.serverFlowId), backendFlow)
               }
             } catch {
               case e: IllegalStateException => // flow expired
@@ -207,14 +207,15 @@ class Proxy(val context: Context) extends StrictLogging {
 
   def flowLoop() = {
     while (!closed) {
-      val it = closedFlows.keySet.iterator
+      val it = closedFlows.iterator
       while (it.hasNext) {
-        val FlowAssociation(handler, frontendFlowId, backendFlow) = it.next()
+        val (FlowAssociation(handler, frontendFlowId), backendFlow) = it.next()
         try {
-          if (handler.connection.flow(frontendFlowId).isRecovered) {
+          if (handler.isRecovered(frontendFlowId)) {
             it.remove()
             logger.debug("Opening flow: " + backendFlow)
             backendFlow.openFlow()
+            
           }
         } catch {
           case e: IllegalStateException => it.remove() // flow expired

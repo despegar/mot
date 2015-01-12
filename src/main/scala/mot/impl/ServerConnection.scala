@@ -21,6 +21,7 @@ import mot.dump.ConnectionEvent
 import mot.dump.Direction
 import mot.dump.Operation
 import mot.protocol.FlowControlFrame
+import mot.ServerConnectionHandler
 
 class ServerConnection(val server: Server, socketImpl: Socket) extends AbstractConnection(server, socketImpl) {
 

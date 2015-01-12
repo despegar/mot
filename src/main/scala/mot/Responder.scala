@@ -1,7 +1,5 @@
 package mot
 
-import mot.impl.ServerConnectionHandler
-import mot.impl.OutgoingResponse
 import java.util.concurrent.TimeUnit
 
 class Responder private[mot](
@@ -12,17 +10,13 @@ class Responder private[mot](
     
   private var responseSent = false
 
-  // TODO: prevent the Connection object to escape
-  def connection() = connectionHandler.connection
-  
   /**
    * Offer a response. If the sending queue is full, wait the specified time. Return whether the response could be enqueued. 
    */
   def offer(message: Message, wait: Long, timeUnit: TimeUnit): Boolean = synchronized {
     if (responseSent)
       throw new ResponseAlreadySendException
-    val outgoing = OutgoingResponse(requestId, message)
-    val success = connectionHandler.connection.offerResponse(serverFlowId, outgoing, wait, timeUnit)
+    val success = connectionHandler.offerResponse(serverFlowId, requestId, message, wait, timeUnit)
     if (success)
       responseSent = true
     success

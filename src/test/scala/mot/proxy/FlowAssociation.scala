@@ -1,7 +1,7 @@
 package mot.proxy
 
-import mot.impl.ServerConnectionHandler
+import mot.ServerConnectionHandler
 import mot.ClientFlow
 
-case class FlowAssociation(serverConnecton: ServerConnectionHandler, frontendFlowId: Int, backendFlow: ClientFlow)
+case class FlowAssociation(serverConnection: ServerConnectionHandler, frontendFlowId: Int)
 
