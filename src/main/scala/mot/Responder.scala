@@ -2,6 +2,7 @@ package mot
 
 import mot.impl.ServerConnectionHandler
 import mot.impl.OutgoingResponse
+import java.util.concurrent.TimeUnit
 
 class Responder private[mot](
     val connectionHandler: ServerConnectionHandler, 
@@ -11,27 +12,26 @@ class Responder private[mot](
     
   private var responseSent = false
 
-  // TODO: Prevent the Connection object to escape
+  // TODO: prevent the Connection object to escape
   def connection() = connectionHandler.connection
   
   /**
-   * Offer a response. Return whether the response could be enqueued. There is no way to wait until the response
-   * is in the queue. The suggested action in case of rejection is to log the error o do something of the sort (i.e. 
-   * increment some error counter). 
-   * Note that there is never a good idea to block here, because back-pressure cannot be applied in the general case
-   * of a party serving more than one client. Response overflows arise when a client is sending requests faster than
-   * it can read their responses, or has bandwidth to receive them. A cautious client can avoid this situation 
-   * limiting the number of pending requests it has at any time, which also is a good idea regardless of this 
-   * situation.
+   * Offer a response. If the sending queue is full, wait the specified time. Return whether the response could be enqueued. 
    */
-  def offerResponse(message: Message): Boolean = synchronized {
+  def offer(message: Message, wait: Long, timeUnit: TimeUnit): Boolean = synchronized {
     if (responseSent)
       throw new ResponseAlreadySendException
-    val success = connectionHandler.connection.offerResponse(serverFlowId, OutgoingResponse(requestId, message))
+    val outgoing = OutgoingResponse(requestId, message)
+    val success = connectionHandler.connection.offerResponse(serverFlowId, outgoing, wait, timeUnit)
     if (success)
       responseSent = true
     success
   }
+  
+  /**
+   * Offer a response. Return whether the response could be enqueued. Never block.
+   */
+  def offer(message: Message): Boolean = offer(message, 0, TimeUnit.NANOSECONDS)
   
   override def toString() = 
     s"Responder(connection=$connectionHandler,requestId=$requestId,timeout=${timeoutMs}ms,serverFlowId=$serverFlowId)"

@@ -153,8 +153,8 @@ class Proxy(val context: Context) extends StrictLogging {
 
   def respondError(responder: Option[Responder], status: Int, msg: String) = {
     responder match {
-      case Some(resp) =>
-        val success = resp.offerResponse(Message.fromString(Map("status" -> ByteArray(status.toString.getBytes)), msg))
+      case Some(responder) =>
+        val success = responder.offer(Message.fromString(Map("status" -> ByteArray(status.toString.getBytes)), msg))
         if (!success)
           responseOverflow.incrementAndGet()
       case None =>
@@ -167,20 +167,20 @@ class Proxy(val context: Context) extends StrictLogging {
   def responseLoop() = {
     while (!closed) {
       responseQueue.poll(200, TimeUnit.MILLISECONDS) match {
-        case (incomingResponse, resp) =>
+        case (incomingResponse, responder) =>
           try {
             val responseSuccess = incomingResponse.result match {
-              case Success(msg) => resp.offerResponse(msg)
-              case Failure(exception) => resp.offerResponse(Message.fromString(attr503, exception.getMessage))
+              case Success(msg) => responder.offer(msg)
+              case Failure(exception) => responder.offer(Message.fromString(attr503, exception.getMessage))
             }
             if (!responseSuccess)
               responseOverflow.incrementAndGet()
             try {
-              if (resp.connection.flow(resp.serverFlowId).isSaturated) {
+              if (responder.connection.flow(responder.serverFlowId).isSaturated) {
                 val backendFlow = incomingResponse.clientFlow
                 if (backendFlow.closeFlow())
                   logger.debug("Closing flow: " + backendFlow)
-                closedFlows.put(FlowAssociation(resp.connectionHandler, resp.serverFlowId, backendFlow), true)
+                closedFlows.put(FlowAssociation(responder.connectionHandler, responder.serverFlowId, backendFlow), true)
               }
             } catch {
               case e: IllegalStateException => // flow expired
@@ -188,7 +188,7 @@ class Proxy(val context: Context) extends StrictLogging {
             }
           } catch {
             case NonFatal(e) =>
-              sendErrorIfPossible(resp, 500, e.getMessage)
+              sendErrorIfPossible(responder, 500, e.getMessage)
               logger.debug("Error", e)
           }
         case null => // pass

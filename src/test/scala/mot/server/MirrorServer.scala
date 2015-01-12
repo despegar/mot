@@ -30,8 +30,8 @@ object MirrorServer extends StrictLogging {
         val incoming = server.poll(200, TimeUnit.MILLISECONDS)
         if (incoming != null) {
           try {
-            incoming.responderOption.foreach { r =>
-              val success = r.offerResponse(Message.fromByteArrays(Nil, incoming.message.bodyParts: _*))
+            for (responder <- incoming.responderOption) {
+              val success = responder.offer(Message.fromByteArrays(Nil, incoming.message.bodyParts: _*))
               if (!success)
                 responseOverflow.incrementAndGet()
             }

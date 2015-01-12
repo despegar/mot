@@ -63,13 +63,13 @@ class ServerConnection(val server: Server, socketImpl: Socket) extends AbstractC
     server.connections.remove(remoteAddress)
   }
 
-  def offerResponse(serverFlowId: Int, outgoingResponse: OutgoingResponse): Boolean = {
+  def offerResponse(serverFlowId: Int, outgoingResponse: OutgoingResponse, wait: Long, timeUnit: TimeUnit): Boolean = {
     if (outgoingResponse.message.bodyLength > remoteMaxLength.get) {
       tooLargeResponses.incrementAndGet()
       throw new MessageTooLargeException(outgoingResponse.message.bodyLength, remoteMaxLength.get)
     }
     val flow = responseFlows.getOrCreateFlow(serverFlowId)
-    flow.queue.offer(outgoingResponse)
+    flow.queue.offer(outgoingResponse, wait, timeUnit)
   }
 
   def localHello = ServerHello(protocolVersion = 1, localName, party.maxAcceptedLength)

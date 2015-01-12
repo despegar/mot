@@ -42,7 +42,7 @@ class Test extends FunSuite with BeforeAndAfterAll {
       val incomingMessage = server.poll(pollMs, TimeUnit.MILLISECONDS)
       assertResult(request.stringBody)(incomingMessage.message.stringBody)
       val response = Message.fromString(Nil, "the-response-" + i)
-      val responseSuccess = incomingMessage.responder.offerResponse(response)
+      val responseSuccess = incomingMessage.responder.offer(response)
       assert(responseSuccess)
       val receivedResponse = promise.result(pollMs, TimeUnit.MILLISECONDS).get.result.get
       assertResult(response.stringBody)(receivedResponse.stringBody)
@@ -61,7 +61,7 @@ class Test extends FunSuite with BeforeAndAfterAll {
       val incomingMessage = server.poll(pollMs, TimeUnit.MILLISECONDS)
       assertResult(request.stringBody)(incomingMessage.message.stringBody)
       val response = Message.fromString(Nil, "the-response")
-      val success = incomingMessage.responder.offerResponse(response)
+      val success = incomingMessage.responder.offer(response)
       assert(success)
       promise -> response
     }
@@ -107,7 +107,7 @@ class Test extends FunSuite with BeforeAndAfterAll {
     assert(requestSuccess)
     val incomingMessage = server.poll(pollMs, TimeUnit.MILLISECONDS)
     val response = Message.fromString(Nil, "the-response")
-    val responseSuccess = incomingMessage.responder.offerResponse(response)
+    val responseSuccess = incomingMessage.responder.offer(response)
     assert(responseSuccess)
     val receivedResponse = promise.result(pollMs, TimeUnit.MILLISECONDS).get.result.get
     val sdf = new SimpleDateFormat("HH:mm:ss.SSS'Z'")
@@ -122,9 +122,9 @@ class Test extends FunSuite with BeforeAndAfterAll {
     ctx.close()
     val groups = events.groupBy(_.direction)
     val incoming = groups(Direction.Incoming)
-    val ougoiing = groups(Direction.Outgoing)
+    val outgoing = groups(Direction.Outgoing)
     val incomingMessages = for (MessageEvent(conn, dir, msg) <- incoming) yield msg
-    val outgoingMessages = for (MessageEvent(conn, dir, msg) <- ougoiing) yield msg
+    val outgoingMessages = for (MessageEvent(conn, dir, msg) <- outgoing) yield msg
     // transform into sets because hello frames can appear in different order in each side or the connection
     assert(incomingMessages.toSet == outgoingMessages.toSet)
   }
