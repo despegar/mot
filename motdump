@@ -3,7 +3,7 @@ import sys, socket, argparse, signal
 
 parser = argparse.ArgumentParser(
 	description="Dump Mot messages. Somewhat like tcpdump, but it understands Mot's format.")
-parser.add_argument('-p', '--port', type=int, default=6000, help="port to connect to (default: %(default)s)")
+parser.add_argument('-p', '--port', type=int, default=6001, help="port to connect to (default: %(default)s)")
 parser.add_argument('-b', '--body', action='store_true', help="show message bodies")
 parser.add_argument('-a', '--attributes', action='store_true', help="show attribute values")
 parser.add_argument('-s', '--buffer-size', type=int, default=10000, 
