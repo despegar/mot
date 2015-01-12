@@ -55,4 +55,3 @@ Known limitations
 -----------------
 
 * Transport Layer Security (TLS) is not currently supported.
-par
