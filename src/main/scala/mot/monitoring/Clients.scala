@@ -4,6 +4,9 @@ import mot.util.Tabler
 import mot.Context
 import collection.JavaConversions._
 import scala.collection.immutable
+import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.duration.Duration
+import scala.concurrent.duration.Duration.Infinite
 
 class Clients(context: Context) extends SimpleCommandHandler {
 
@@ -19,7 +22,7 @@ class Clients(context: Context) extends SimpleCommandHandler {
       Col[Int]("MAX-SND-QUEUE", 13, Right),
       Col[Int]("READBUF-SIZE", 13, Right),
       Col[Int]("WRITEBUF-SIZE", 13, Right),
-      Col[String]("TOLERANCE", 11, Left),
+      Col[String]("TOLERANCE", 13, Left),
       Col[Int]("CONNECTORS", 12, Right)) { printer =>
         for (client <- context.clients.values) {
           printer(
@@ -28,10 +31,15 @@ class Clients(context: Context) extends SimpleCommandHandler {
             client.sendingQueueSize,
             client.readerBufferSize,
             client.writerBufferSize,
-            client.tolerance.toString, 
+            durationToString(client.tolerance), 
             client.connectors.size)
         }
       }
+  }
+  
+  private def durationToString(duration: Duration) = duration match {
+    case fd: FiniteDuration => fd.toString
+    case id: Infinite => "∞"
   }
 
 }

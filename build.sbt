@@ -2,7 +2,7 @@ organization := "mot"
 
 name := "mot"
 
-version := "0.7.0"
+version := "0.8-SNAPSHOT"
 
 scalaVersion := "2.11.4"
 
