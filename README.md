@@ -61,6 +61,8 @@ The present implementation uses blocking IO, with one thread reading and other w
 
 Netty's implementation of the hashed wheel timer is used to keep track of request expirations. Tests showed it is quite more scalable than the JDK-provided ScheduledThreadPoolExecutor, which uses a heap internally. The hashed wheel timer scales well into the hundreds of thousands of requests per second. Its trick is to trade speed for some resolution, which can be acceptable in the case of IO timeouts. This is the only external dependency.
 
+Regarding performance, a single client-server pair can easily reach a throughput in the order of hundreds of thousands of request-response roundtrips, using two quad-core instances. The latency in idle hardware of a request-response roundtrip is in the order of the single millisecond.
+
 Known limitations
 -----------------
 
