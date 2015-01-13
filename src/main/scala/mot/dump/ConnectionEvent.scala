@@ -6,7 +6,7 @@ import java.text.SimpleDateFormat
 import java.nio.charset.StandardCharsets.US_ASCII
 
 object Operation extends Enumeration {
-  val FailedAttempt, Creation, Close = Value
+  val FailedNameResolution, FailedAttempt, Creation, Close = Value
 }
 
 case class ConnectionEvent(conn: Connection, direction: Direction.Value, operation: Operation.Value, cause: String = "") 

@@ -26,6 +26,9 @@ import scala.util.Failure
 import scala.util.Success
 import mot.LocalClosedException
 import java.net.InetAddress
+import java.net.SocketException
+import java.net.UnknownHostException
+import java.net.SocketTimeoutException
 
 /**
  * Represents the link between the client and one server.
@@ -34,14 +37,14 @@ import java.net.InetAddress
 class ClientConnector(val client: Client, val target: Address) extends StrictLogging {
 
   val creationTime = System.nanoTime()
-  
+
   val sendingQueue = new LinkedBlockingMultiQueue[String, OutgoingEvent](client.sendingQueueSize)
 
   val messagesQueue = sendingQueue.addChild("messages", priority = 100)
   val flowControlQueue = sendingQueue.addChild("flowNotifications", capacity = 5, priority = 10)
 
   val writerThread = new Thread(connectLoop _, s"mot(${client.name})-writer-for-$target")
-  
+
   private val closed = new AtomicBoolean
 
   val pendingResponses =
@@ -50,7 +53,7 @@ class ClientConnector(val client: Client, val target: Address) extends StrictLog
       0.5f /* load factor */ )
 
   val notYetConnected = new Exception("not yet connected")
-  
+
   @volatile var currentConnection: Try[ClientConnection] = Failure(notYetConnected)
 
   val requestCounter = new AtomicInteger
@@ -66,7 +69,7 @@ class ClientConnector(val client: Client, val target: Address) extends StrictLog
   @volatile var triedToSendTooLargeMessage = 0L
 
   writerThread.start()
-  logger.debug(s"Creating connector: ${client.name}->$target")
+  logger.debug(s"creating connector: ${client.name}->$target")
 
   def offerMessage(message: Message, timeout: Long, unit: TimeUnit): Boolean = {
     lastUse = System.nanoTime()
@@ -88,12 +91,9 @@ class ClientConnector(val client: Client, val target: Address) extends StrictLog
   def connectLoop(): Unit = {
     try {
       while (!closed.get) {
-        for (sock <- connectSocket()) {
-          val conn = new ClientConnection(this, sock)
-          currentConnection = Success(conn)
+        connectSocket()
+        for (conn <- currentConnection)
           conn.startAndBlockWriting()
-          currentConnection = Failure(notYetConnected)
-        }
       }
     } catch {
       case NonFatal(e) => client.context.uncaughtErrorHandler.handle(e)
@@ -101,33 +101,57 @@ class ClientConnector(val client: Client, val target: Address) extends StrictLog
     logger.trace("Client connector finished")
   }
 
+  val minimumDelay = Duration(1000, TimeUnit.MILLISECONDS)
+
   /*
    * Connects a socket for sending messages. In case of failures, retries indefinitely
    */
-  private def connectSocket(): Option[Socket] = {
-    def op() = {
-      logger.trace(s"Connecting to $target")
-      val socket = new Socket
-      // Create a socket address for each connection attempt, to avoid caching DNS resolution forever
-      val resolved = InetAddress.getAllByName(target.host)(0) // DNS resolution
-      val socketAddress = new InetSocketAddress(resolved, target.port)
-      socket.connect(socketAddress, ClientConnector.connectTimeout)
-      logger.info(s"Socket to $target connected")
-      socket
+  private def connectSocket(): Unit = {
+    val dumper = client.context.dumper
+    val prospConn = ProspectiveConnection(target, client.name)
+    currentConnection = Failure(notYetConnected)
+    var lastAttempt = -1L
+    while (!closed.get && currentConnection.isFailure) {
+      waitIfNecessary(lastAttempt)
+      lastAttempt = System.nanoTime()
+      try {
+        val resolved = InetAddress.getAllByName(target.host).toSeq // DNS resolution
+        var i = 0
+        while (!closed.get && currentConnection.isFailure && i < resolved.size) {
+          val addr = resolved(i).getHostAddress
+          val addrStr = s"${target.host}/$addr:${target.port}"
+          val socketAddress = new InetSocketAddress(addr, target.port)
+          try {
+            val socket = new Socket
+            logger.debug(s"connecting to $addrStr (address ${i + 1} of ${resolved.size})")
+            socket.connect(socketAddress, ClientConnector.connectTimeout)
+            logger.info(s"socket to $addrStr connected")
+            currentConnection = Success(new ClientConnection(this, socket))
+          } catch {
+            case e @ (_: SocketException | _: SocketTimeoutException) =>
+              logger.info(s"cannot connect to $addrStr: ${e.getMessage}.")
+              logger.trace("", e)
+              dumper.dump(ConnectionEvent(prospConn, Direction.Outgoing, Operation.FailedAttempt, e.getMessage))
+              currentConnection = Failure(e)
+          }
+          i += 1
+        }
+      } catch {
+        case e: UnknownHostException =>
+          logger.info(s"cannot resolve ${target.host}: ${e.getMessage}.")
+          logger.trace("", e)
+          dumper.dump(ConnectionEvent(prospConn, Direction.Outgoing, Operation.FailedNameResolution, e.getMessage))
+          currentConnection = Failure(e)
+      }
     }
-    val start = System.nanoTime()
-    val res = Util.retryConditionally(op, closed) {
-      // Must catch anything that is network-related (to retry) but nothing that could be a bug.
-      // Note that DNS-related errors do not throw SocketExceptions
-      case e: IOException =>
-        logger.info(s"cannot connect to $target: ${e.getMessage}.")
-        logger.trace("", e)
-        val pc = ProspectiveConnection(target, client.name)
-        client.context.dumper.dump(ConnectionEvent(pc, Direction.Outgoing, Operation.FailedAttempt, e.getMessage))
-        currentConnection = Failure(e)
-    }
-    currentConnection = Failure(new LocalClosedException)
-    res
+    if (closed.get)
+      currentConnection = Failure(new LocalClosedException)
+  }
+
+  private def waitIfNecessary(lastAttempt: Long): Unit = {
+    val elapsed = Duration(System.nanoTime() - lastAttempt, TimeUnit.NANOSECONDS)
+    val remaining = minimumDelay - elapsed
+    Thread.sleep(math.max(remaining.toMillis, 0))
   }
 
   def close(): Unit = {
