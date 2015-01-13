@@ -44,6 +44,8 @@ object Message {
   def fromString(attributes: immutable.Seq[(String, ByteArray)], string: String): Message = 
     fromByteArray(attributes, ByteArray.fromString(string, defaultEncoding))
 
+  def fromString(string: String): Message = fromByteArray(Nil, ByteArray.fromString(string, defaultEncoding))
+
   def fromByteArrays(attributes: immutable.Seq[(String, ByteArray)], bodyParts: ByteArray*): Message = {
     val immutableParts = bodyParts.to[immutable.Seq]
     validate(attributes, immutableParts)
@@ -54,6 +56,8 @@ object Message {
   def fromByteArrays(attributes: Map[String, ByteArray], bodyParts: ByteArray*): Message =
     fromByteArrays(attributes.to[immutable.Seq], bodyParts: _*)
 
+  def fromByteArrays(bodyParts: ByteArray*): Message = fromByteArrays(Nil, bodyParts: _*)
+
   def fromByteArray(attributes: immutable.Seq[(String, ByteArray)], bodyPart: ByteArray): Message = {
     val parts = bodyPart :: Nil /* use :: to avoid mutable builders */
     validate(attributes, parts)
@@ -63,6 +67,8 @@ object Message {
   
   def fromByteArray(attributes: immutable.Map[String, ByteArray], bodyPart: ByteArray): Message = 
     fromByteArray(attributes.to[immutable.Seq], bodyPart)
+
+  def fromByteArray(bodyPart: ByteArray): Message = fromByteArray(Nil, bodyPart)
 
   private def validate(attributes: immutable.Seq[(String, ByteArray)], bodyParts: immutable.Seq[ByteArray]) = {
     validateAttributes(attributes)

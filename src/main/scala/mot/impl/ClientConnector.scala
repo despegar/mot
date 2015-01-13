@@ -105,11 +105,11 @@ class ClientConnector(val client: Client, val target: Address) extends StrictLog
    * Connects a socket for sending messages. In case of failures, retries indefinitely
    */
   private def connectSocket(): Option[Socket] = {
-    val resolved = InetAddress.getAllByName(target.host)(0)
     def op() = {
       logger.trace(s"Connecting to $target")
       val socket = new Socket
       // Create a socket address for each connection attempt, to avoid caching DNS resolution forever
+      val resolved = InetAddress.getAllByName(target.host)(0) // DNS resolution
       val socketAddress = new InetSocketAddress(resolved, target.port)
       socket.connect(socketAddress, ClientConnector.connectTimeout)
       logger.info(s"Socket to $target connected")
