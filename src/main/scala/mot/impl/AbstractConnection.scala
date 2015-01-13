@@ -100,7 +100,7 @@ abstract class AbstractConnection(val party: MotParty, val socketImpl: Socket) e
       logger.info("Closing connection: " + e.getMessage)
       logger.trace("", e)
       val direction = e match {
-        case _ :ProtocolSemanticException | _: LocalClosedException => Direction.Outgoing
+        case _ :ProtocolException | _: LocalClosedException => Direction.Outgoing
         case _: IOException | _: CounterpartyClosedException => Direction.Incoming
       }
       party.context.dumper.dump(ConnectionEvent(this, direction, Operation.Close, e.getMessage))
