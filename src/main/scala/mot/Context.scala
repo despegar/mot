@@ -12,7 +12,7 @@ import scala.collection.JavaConversions._
  * @param uncaughtErrorHandler a handler for unexpected error (bugs).
  */
 class Context(
-    val monitoringPort: Int = 4001, 
+    val monitoringPort: Int = 6101, 
     val dumpPort: Int = 6001,
     val uncaughtErrorHandler: UncaughtErrorHandler = LoggingErrorHandler) {
 
