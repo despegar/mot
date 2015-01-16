@@ -7,12 +7,10 @@ examples = """\
 	  port <number>
 	  src port <number>
 	  dst port <number>
-	  src or dst port <number> 
 	
 	  host <IP address>
 	  src host <IP address>
 	  dst host <IP address>
-	  src or dst host <IP address>
 	  
 	  incoming
 	  outgoing

@@ -63,11 +63,10 @@ class DumpFilterParser extends StandardTokenParsers {
   def incoming = "incoming" ^^^ Dir(Direction.Incoming)
   def outgoing = "outgoing" ^^^ Dir(Direction.Outgoing)
   
-  def sideFilter = srcFilter | destFilter | srcOrDestFilter
+  def sideFilter = srcFilter | destFilter
   
   def srcFilter = "src" ^^^ Side.Source
   def destFilter = "dst" ^^^ Side.Dest
-  def srcOrDestFilter = "src" ~ "or" ~ "dst" ^^^ Side.Any
   
   def lengthFilter = lengthLess | lengthGreater | lengthLessEqual | lengthGreaterEqual
   
