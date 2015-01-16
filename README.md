@@ -20,6 +20,8 @@ Perhaps because of its universal deployment in the Internet and abundant and pro
 
 * Streaming complexity. There are three distinct modes of "transfer encodings" for request and response bodies.
 
+* General complexity. It is perhaps not widely known that implementing HTTP correctly can be difficult. The protocol has evolved for a long time and has some exotic features that must be supported, at least partially, such as pipelining or "trailers" in chunked transfer encoding.
+
 Other approaches
 ----------------
 
