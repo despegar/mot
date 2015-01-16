@@ -38,11 +38,16 @@ class DumpFilterParser extends StandardTokenParsers {
   def not = "not" | "!"
   
   def expr = 
-    messageType | port | host | direction | lengthFilter | attrValue | attrRegex | attrPresence | group | 
+    protocol | messageType | port | host | direction | lengthFilter | attrValue | attrRegex | attrPresence | group | 
     failure("illegal expression")
   
   def group = "(" ~> filter <~ ")"
 
+  def protocol = "protocol" ~> ident ^? (
+    { case name if name == "mot" || name == "tcp" => Protocol(name) },
+    { name => s"invalid protocol '$name', legal values are: 'tcp' and 'mot'" }
+  )
+  
   def messageType = "type" ~> ident ^? (
     { case name if MessageTypes.isValid(name) => Type(MessageTypes.names(name)) },
     { name => s"invalid message type '$name', legal values are: ${MessageTypes.names.keys.mkString(",")}" }

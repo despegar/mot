@@ -9,7 +9,9 @@ import mot.protocol.AttributesSupport
 import mot.protocol.BodySupport
 import mot.protocol.MessageTypes
 
-case class MessageEvent(conn: Connection, direction: Direction.Value, message: Frame) extends Event {
+case class MotEvent(conn: Connection, direction: Direction.Value, message: Frame) extends Event {
+  
+  def protocol = "mot"
   
   def print(os: OutputStream, sdf: SimpleDateFormat, showBody: Boolean, maxBodyLength: Int, showAttributes: Boolean) = {
     val ts = sdf.format(timestampMs) 

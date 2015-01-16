@@ -17,7 +17,7 @@ import mot.MessageTooLargeException
 import mot.IncomingMessage
 import mot.Responder
 import java.util.concurrent.atomic.AtomicBoolean
-import mot.dump.ConnectionEvent
+import mot.dump.TcpEvent
 import mot.dump.Direction
 import mot.dump.Operation
 import mot.protocol.FlowControlFrame
@@ -53,7 +53,7 @@ class ServerConnection(val server: Server, socketImpl: Socket) extends AbstractC
     responseFlows.flow(flowId).getOrElse(throw new IllegalStateException("inexistent flow"))
     
   def start(): Unit = {
-    party.context.dumper.dump(ConnectionEvent(this, Direction.Incoming, Operation.Creation))
+    party.context.dumper.dump(TcpEvent(this, Direction.Incoming, Operation.Creation))
     server.connections.put(remoteAddress, this)
     readerThread.start()
     writerThread.start()

@@ -16,7 +16,7 @@ import java.text.SimpleDateFormat
 import scala.collection.mutable.ListBuffer
 import mot.dump.Event
 import mot.dump.Direction
-import mot.dump.MessageEvent
+import mot.dump.MotEvent
 
 class Test extends FunSuite with BeforeAndAfterAll {
 
@@ -123,8 +123,8 @@ class Test extends FunSuite with BeforeAndAfterAll {
     val groups = events.groupBy(_.direction)
     val incoming = groups(Direction.Incoming)
     val outgoing = groups(Direction.Outgoing)
-    val incomingMessages = for (MessageEvent(conn, dir, msg) <- incoming) yield msg
-    val outgoingMessages = for (MessageEvent(conn, dir, msg) <- outgoing) yield msg
+    val incomingMessages = for (MotEvent(conn, dir, msg) <- incoming) yield msg
+    val outgoingMessages = for (MotEvent(conn, dir, msg) <- outgoing) yield msg
     // transform into sets because hello frames can appear in different order in each side or the connection
     assert(incomingMessages.toSet == outgoingMessages.toSet)
   }

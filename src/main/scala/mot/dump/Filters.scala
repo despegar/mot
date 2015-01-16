@@ -20,9 +20,13 @@ object Filters {
 
   case class Type(messageType: Byte) extends Filter {
     def filter(event: Event) = event match {
-      case me: MessageEvent => me.message.messageType == messageType
+      case me: MotEvent => me.message.messageType == messageType
       case _ => false
     }
+  }
+  
+  case class Protocol(protocol: String) extends Filter {
+    def filter(event: Event) = event.protocol == protocol
   }
 
   case class Port(side: Side.Value, port: Int) extends Filter {
@@ -39,42 +43,42 @@ object Filters {
 
   case class Dir(direction: Direction.Value) extends Filter {
     def filter(event: Event) = event match {
-      case me: MessageEvent => me.direction == direction
+      case me: MotEvent => me.direction == direction
       case _ => false
     }
   }
 
   case class LengthLess(length: Int) extends Filter {
     def filter(event: Event) = event match {
-      case me: MessageEvent => me.message.length < length
+      case me: MotEvent => me.message.length < length
       case _ => false
     }
   }
 
   case class LengthGreater(length: Int) extends Filter {
     def filter(event: Event) = event match {
-      case me: MessageEvent => me.message.length > length
+      case me: MotEvent => me.message.length > length
       case _ => false
     }
   }
 
   case class LengthLessEqual(length: Int) extends Filter {
     def filter(event: Event) = event match {
-      case me: MessageEvent => me.message.length <= length
+      case me: MotEvent => me.message.length <= length
       case _ => false
     }
   }
 
   case class LengthGreaterEqual(length: Int) extends Filter {
     def filter(event: Event) = event match {
-      case me: MessageEvent => me.message.length >= length
+      case me: MotEvent => me.message.length >= length
       case _ => false
     }
   }
 
   case class AttributePresence(name: String) extends Filter {
     def filter(event: Event) = event match {
-      case me: MessageEvent =>
+      case me: MotEvent =>
         me.message match {
           case am: AttributesSupport => am.attributes.exists(_._1 == name)
           case _ => false
@@ -86,7 +90,7 @@ object Filters {
 
   case class AttributeValue(name: String, value: String) extends Filter {
     def filter(event: Event) = event match {
-      case me: MessageEvent =>
+      case me: MotEvent =>
         me.message match {
           case am: AttributesSupport => am.attributes.exists { case (n, v) => n == name && v.asString(UTF_8) == value }
           case _ => false
@@ -99,7 +103,7 @@ object Filters {
   case class AttributeRegex(name: String, regex: String) extends Filter {
     val pattern = Pattern.compile(regex)
     def filter(event: Event) = event match {
-      case me: MessageEvent =>
+      case me: MotEvent =>
         me.message match {
           case as: AttributesSupport =>
             as.attributes.exists { case (n, v) => n == name && pattern.matcher(v.asString(UTF_8)).matches() }

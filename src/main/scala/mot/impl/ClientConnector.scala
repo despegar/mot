@@ -17,7 +17,7 @@ import mot.Client
 import mot.Message
 import mot.queue.LinkedBlockingMultiQueue
 import mot.dump.Operation
-import mot.dump.ConnectionEvent
+import mot.dump.TcpEvent
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 import mot.dump.Direction
@@ -131,7 +131,7 @@ class ClientConnector(val client: Client, val target: Address) extends StrictLog
             case e @ (_: SocketException | _: SocketTimeoutException) =>
               logger.info(s"cannot connect to $addrStr: ${e.getMessage}.")
               logger.trace("", e)
-              dumper.dump(ConnectionEvent(prospConn, Direction.Outgoing, Operation.FailedAttempt, e.getMessage))
+              dumper.dump(TcpEvent(prospConn, Direction.Outgoing, Operation.FailedAttempt, e.getMessage))
               currentConnection = Failure(e)
           }
           i += 1
@@ -140,7 +140,7 @@ class ClientConnector(val client: Client, val target: Address) extends StrictLog
         case e: UnknownHostException =>
           logger.info(s"cannot resolve ${target.host}: ${e.getMessage}.")
           logger.trace("", e)
-          dumper.dump(ConnectionEvent(prospConn, Direction.Outgoing, Operation.FailedNameResolution, e.getMessage))
+          dumper.dump(TcpEvent(prospConn, Direction.Outgoing, Operation.FailedNameResolution, e.getMessage))
           currentConnection = Failure(e)
       }
     }

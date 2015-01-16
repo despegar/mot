@@ -9,8 +9,10 @@ object Operation extends Enumeration {
   val FailedNameResolution, FailedAttempt, Creation, Close = Value
 }
 
-case class ConnectionEvent(conn: Connection, direction: Direction.Value, operation: Operation.Value, cause: String = "") 
+case class TcpEvent(conn: Connection, direction: Direction.Value, operation: Operation.Value, cause: String = "") 
     extends Event {
+  
+  def protocol = "tcp"
 
   def print(os: OutputStream, sdf: SimpleDateFormat, showBody: Boolean, maxBodyLen: Int, showAttr: Boolean) = {
     val ts = sdf.format(timestampMs) 

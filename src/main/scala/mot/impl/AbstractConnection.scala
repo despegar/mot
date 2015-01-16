@@ -6,7 +6,7 @@ import mot.buffer.ReadBuffer
 import mot.buffer.WriteBuffer
 import mot.dump.Dumper
 import mot.protocol.Frame
-import mot.dump.MessageEvent
+import mot.dump.MotEvent
 import mot.dump.Direction
 import mot.LocalClosedException
 import mot.protocol.HeartbeatFrame
@@ -14,7 +14,7 @@ import com.typesafe.scalalogging.slf4j.StrictLogging
 import java.io.EOFException
 import java.io.IOException
 import mot.dump.Operation
-import mot.dump.ConnectionEvent
+import mot.dump.TcpEvent
 import mot.util.Pollable
 import mot.protocol.ProtocolSemanticException
 import mot.GreetingAbortedException
@@ -70,13 +70,13 @@ abstract class AbstractConnection(val party: MotParty, val socketImpl: Socket) e
 
   def readMessage(): Frame = {
     val msg = Frame.read(readBuffer, party.maxAcceptedLength)
-    party.context.dumper.dump(MessageEvent(this, Direction.Incoming, msg))
+    party.context.dumper.dump(MotEvent(this, Direction.Incoming, msg))
     lastReception = System.nanoTime()
     msg
   }
 
   def writeMessage(msg: Frame): Unit = {
-    party.context.dumper.dump(MessageEvent(this, Direction.Outgoing, msg))
+    party.context.dumper.dump(MotEvent(this, Direction.Outgoing, msg))
     msg.write(writeBuffer)
     lastWrite = System.nanoTime()
   }
@@ -103,7 +103,7 @@ abstract class AbstractConnection(val party: MotParty, val socketImpl: Socket) e
         case _ :ProtocolException | _: LocalClosedException => Direction.Outgoing
         case _: IOException | _: CounterpartyClosedException => Direction.Incoming
       }
-      party.context.dumper.dump(ConnectionEvent(this, direction, Operation.Close, e.getMessage))
+      party.context.dumper.dump(TcpEvent(this, direction, Operation.Close, e.getMessage))
       reportClose(e)
     }
   }

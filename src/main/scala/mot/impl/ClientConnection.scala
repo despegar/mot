@@ -17,7 +17,7 @@ import mot.Message
 import mot.MessageTooLargeException
 import mot.InvalidClientConnectionException
 import mot.protocol.FlowControlFrame
-import mot.dump.ConnectionEvent
+import mot.dump.TcpEvent
 import mot.dump.Direction
 import mot.dump.Operation
 
@@ -36,7 +36,7 @@ class ClientConnection(val connector: ClientConnector, socketImpl: Socket)
   def isClosed() = socket.isClosed()
 
   def startAndBlockWriting(): Unit = {
-    party.context.dumper.dump(ConnectionEvent(this, Direction.Outgoing, Operation.Creation))
+    party.context.dumper.dump(TcpEvent(this, Direction.Outgoing, Operation.Creation))
     readerThread.start()
     writerLoop()
   }
