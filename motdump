@@ -1,8 +1,47 @@
 #!/usr/bin/python
-import sys, socket, argparse, signal
+import sys, socket, argparse, signal, textwrap
 
+examples = """\
+	Primitive filters:
+	
+	  port <number>
+	  src port <number>
+	  dst port <number>
+	  src or dst port <number> 
+	
+	  host <IP address>
+	  src host <IP address>
+	  dst host <IP address>
+	  src or dst host <IP address>
+	  
+	  incoming
+	  outgoing
+	  
+	  type <message type>
+	  
+	  len > <number>
+	  len >= <number>
+	  len < <number>
+	  len <= <number>
+	  
+	  attr[<name>]                    (check attribute presence)
+	  attr[<name>] == <value>
+	  attr[<name>] ~= <regular expresion>
+	  
+	Filter combination:
+	  
+	  negation    -- not type heartbeat
+	  conjunction -- host <IP address> and not type heartbeat
+	  disjunction -- incoming or len > <number>
+	  grouping    -- (incoming or len > <number>) and not type heartbeat
+	  
+	"""
+		
 parser = argparse.ArgumentParser(
-	description="Dump Mot messages. Somewhat like tcpdump, but it understands Mot's format.")
+	formatter_class=argparse.RawDescriptionHelpFormatter,
+	description="Dump Mot messages. Somewhat like tcpdump, but understanding Mot's format.",
+	epilog=textwrap.dedent(examples))
+
 parser.add_argument('-p', '--port', type=int, default=6001, help="port to connect to (default: %(default)s)")
 parser.add_argument('-b', '--body', action='store_true', help="show message bodies")
 parser.add_argument('-a', '--attributes', action='store_true', help="show attribute values")
@@ -11,6 +50,7 @@ parser.add_argument('-s', '--buffer-size', type=int, default=10000,
 parser.add_argument('-l', '--length', type=int, default=1024, 
 	help="how many characters are shown of each message if option '--body' is used (default: %(default)s)")
 parser.add_argument('tokens', nargs='*', metavar="expression", help="filter expression; if absent, all messages are dumped")
+
 args = parser.parse_args()
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
