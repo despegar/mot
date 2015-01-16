@@ -54,7 +54,7 @@ From a user's point of view, Mot messages consist of a delimited byte array. The
 Wire Format
 -----------
 
-The protocol wire format is specified as a handful of frames. There are currently eight frame types, which are documented [here](src/main/scala/mot/protocol).
+The protocol wire format is specified as a handful of binary frames. Simplicity was an explicit design goal, and there are currently just eight frame types, which are documented [here](src/main/scala/mot/protocol).
 
 Implementation
 --------------
