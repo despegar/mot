@@ -19,10 +19,7 @@ object Filters {
   }
 
   case class Type(messageType: Byte) extends Filter {
-    def filter(event: Event) = event match {
-      case me: MotEvent => me.message.messageType == messageType
-      case _ => false
-    }
+    def filter(event: Event) = filterMotEvent(event)(_.message.messageType == messageType)
   }
   
   case class Protocol(protocol: String) extends Filter {
@@ -30,11 +27,11 @@ object Filters {
   }
 
   case class Port(side: Side.Value, port: Int) extends Filter {
-    def filter(event: Event) = filterAddress(event, side, _.port == port)
+    def filter(event: Event) = filterAddress(event, side)(_.port == port)
   }
 
   case class Host(side: Side.Value, host: String) extends Filter {
-    def filter(event: Event) = filterAddress(event, side, _.host == host)
+    def filter(event: Event) = filterAddress(event, side)(_.host == host)
   }
 
   object Side extends Enumeration {
@@ -42,76 +39,43 @@ object Filters {
   }
 
   case class Dir(direction: Direction.Value) extends Filter {
-    def filter(event: Event) = event match {
-      case me: MotEvent => me.direction == direction
-      case _ => false
-    }
+    def filter(event: Event) = filterMotEvent(event)(_.direction == direction)
   }
 
   case class LengthLess(length: Int) extends Filter {
-    def filter(event: Event) = event match {
-      case me: MotEvent => me.message.length < length
-      case _ => false
-    }
+    def filter(event: Event) = filterMotEvent(event)(_.message.length < length)
   }
 
   case class LengthGreater(length: Int) extends Filter {
-    def filter(event: Event) = event match {
-      case me: MotEvent => me.message.length > length
-      case _ => false
-    }
+    def filter(event: Event) = filterMotEvent(event)(_.message.length > length)
   }
 
   case class LengthLessEqual(length: Int) extends Filter {
-    def filter(event: Event) = event match {
-      case me: MotEvent => me.message.length <= length
-      case _ => false
-    }
+    def filter(event: Event) = filterMotEvent(event)(_.message.length <= length)
   }
 
   case class LengthGreaterEqual(length: Int) extends Filter {
-    def filter(event: Event) = event match {
-      case me: MotEvent => me.message.length >= length
-      case _ => false
-    }
+    def filter(event: Event) = filterMotEvent(event)(_.message.length >= length)
   }
 
   case class AttributePresence(name: String) extends Filter {
-    def filter(event: Event) = event match {
-      case me: MotEvent =>
-        me.message match {
-          case am: AttributesSupport => am.attributes.exists(_._1 == name)
-          case _ => false
-        }
-      case _ =>
-        false
-    }
+    def filter(event: Event) = filterAttributes(event)(_.attributes.exists(_._1 == name))
   }
 
   case class AttributeValue(name: String, value: String) extends Filter {
-    def filter(event: Event) = event match {
-      case me: MotEvent =>
-        me.message match {
-          case am: AttributesSupport => am.attributes.exists { case (n, v) => n == name && v.asString(UTF_8) == value }
-          case _ => false
-        }
-      case _ =>
-        false
+    def filter(event: Event) = {
+      filterAttributes(event) { as => 
+        as.attributes.exists { case (n, v) => n == name && v.asString(UTF_8) == value } 
+      }
     }
   }
 
   case class AttributeRegex(name: String, regex: String) extends Filter {
     val pattern = Pattern.compile(regex)
-    def filter(event: Event) = event match {
-      case me: MotEvent =>
-        me.message match {
-          case as: AttributesSupport =>
-            as.attributes.exists { case (n, v) => n == name && pattern.matcher(v.asString(UTF_8)).matches() }
-          case _ =>
-            false
-        }
-      case _ =>
-        false
+    def filter(event: Event) = {
+      filterAttributes(event) { as => 
+        as.attributes.exists { case (n, v) => n == name && pattern.matcher(v.asString(UTF_8)).matches() }
+      }
     }
   }
 
