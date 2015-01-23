@@ -25,7 +25,7 @@ Perhaps because of its universal deployment in the Internet and abundant and pro
 Other approaches
 ----------------
 
-* Plain sockets -- it is always possible to use the TCP streams directly (and it is indeed done by a lot of applications); this, however, puts the burden of doing all the repetitive tasks (delimitation, response assocation, connection lifecycle management) on the applicacion programmer.
+* Plain sockets -- it is always possible to use the TCP streams directly (and it is indeed done by a lot of applications); this, however, puts the burden of doing all the repetitive tasks (delimitation, response association, connection lifecycle management) on the application programmer.
 
 * [SPDY](http://www.chromium.org/spdy/spdy-whitepaper) -- a protocol than maintains HTTP semantics, but encodes the information in binary form; it also modifies the way the data is sent over the TCP connection (TLS actually); its goal is primarily to serve as a replacement for HTTP in the web.
 
@@ -49,7 +49,7 @@ Keeping messages relatively small (the actual size is actually configurable) als
 Messages
 --------
 
-From a user's point of view, Mot messages consist of a delimited byte array. The maximum size of the array that can be received is communicated by each party in the connection handshake. Messages also support attributes: a sequence of name-value associations that can be used to pass metadata. The names are short ASCII string and the values are short byte arrays. Mot does not interpret the contents of the attributes in any way, they exist solely for the user's convenience. Attributes can be used to pass the header when encapsulating HTTP requests and responses.
+From a user's point of view, Mot messages consist of a delimited byte array. The maximum size of the array that can be received is communicated by each party in the connection handshake. Messages also support attributes: a sequence of name-value associations that can be used to pass meta-data. The names are short ASCII string and the values are short byte arrays. Mot does not interpret the contents of the attributes in any way, they exist solely for the user's convenience. Attributes can be used to pass the header when encapsulating HTTP requests and responses.
 
 Wire Format
 -----------
@@ -65,7 +65,27 @@ Netty's implementation of the hashed wheel timer is used to keep track of reques
 
 As it is commonly done with HTTP and other protocols, when the target is specified using a domain name (not an IP address), the implementation will try to establish a connection with all the A and AAAA records associated with the name, until one eventually succeeds.
 
-Regarding performance, a single client-server pair can easily reach a throughput in the order of hundreds of thousands of request-response roundtrips, using two quad-core instances. The latency in idle hardware of a request-response roundtrip is in the order of the single millisecond.
+Regarding performance, a single client-server pair can easily reach a throughput in the order of hundreds of thousands of request-response round-trips, using two quad-core instances. The latency in idle hardware of a request-response round-trip is in the order of the single millisecond.
+
+Monitoring
+----------
+
+Monitoring was an essential design consideration in the implementation. While this is an important feature in general, it is more important in this case, as Mot uses a binary protocol, and also because of the connection model (a single TCP connection can transport unrelated data). These circumstances can make the typical inspection using tcpdump or netstat somewhat inconvenient.
+
+There are two monitoring tools available. Both work through TCP connections to the loopback interface:
+
+### motstat
+
+[motstat](motstat) is a command-line application that provides information about current connections (much like netstat) and also live monitoring of internal counters.
+
+### motdump
+
+[motdump](motdumo) is a command-line application that dumps the frames as they are received or transmitted, much like as tcpdump does with the protocol segments. It offers a full set of filters that allow the command to be useful even in high-traffic environments.
+
+Murl
+----
+
+A frequent reason to keep using legacy protocols is simply that useful tools do exist. In order to make the testing of Mot servers more convenient, a simple command-line application is provided. [Murl](murl) (short for "Mot Curl") implements the client-side Mot functionality and allows to use the protocol from the command line.
 
 Known limitations
 -----------------
