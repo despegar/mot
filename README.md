@@ -80,7 +80,7 @@ There are two monitoring tools available. Both work through TCP connections to t
 
 ### motdump
 
-[motdump](motdumo) is a command-line application that dumps the frames as they are received or transmitted, much like as tcpdump does with the protocol segments. It offers a full set of filters that allow the command to be useful even in high-traffic environments.
+[motdump](motdump) is a command-line application that dumps the frames as they are received or transmitted, much like as tcpdump does with the protocol segments. It offers a full set of filters that allow the command to be useful even in high-traffic environments.
 
 Murl
 ----
