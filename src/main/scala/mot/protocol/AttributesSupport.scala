@@ -1,6 +1,5 @@
 package mot.protocol
 
-import scala.collection.immutable
 import mot.util.Util
 import mot.buffer.ReadBuffer
 import java.nio.charset.StandardCharsets.US_ASCII
@@ -12,7 +11,7 @@ trait AttributesSupport {
 
   import AttributesSupport._
   
-  def attributes: immutable.Seq[(String, ByteArray)]
+  def attributes: Seq[(String, ByteArray)]
 
   def attributesLength() = {
     var len = 1 // attribute quantity
@@ -55,7 +54,7 @@ trait AttributesSupport {
 
 object AttributesSupport {
 
-  def readAttributes(readBuffer: ReadBuffer): immutable.Seq[(String, ByteArray)] = {
+  def readAttributes(readBuffer: ReadBuffer): Seq[(String, ByteArray)] = {
     val size = readBuffer.get
     if (size < 0)
       throw ProtocolSyntaxException("negative attribute number: " + size)

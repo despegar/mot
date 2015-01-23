@@ -3,7 +3,6 @@ package mot.protocol
 import mot.buffer.WriteBuffer
 import mot.buffer.ReadBuffer
 import java.nio.charset.StandardCharsets.US_ASCII
-import scala.collection.immutable
 import mot.util.ByteArray
 
 /** 

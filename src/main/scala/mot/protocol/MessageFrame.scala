@@ -2,7 +2,6 @@ package mot.protocol
 
 import mot.buffer.ReadBuffer
 import mot.buffer.WriteBuffer
-import scala.collection.immutable
 import mot.util.ByteArray
 
 /**
@@ -23,9 +22,9 @@ import mot.util.ByteArray
  * ╰───────────────────────────────────────────────────────────────╯
  */
 case class MessageFrame(
-    val attributes: immutable.Seq[(String, ByteArray)], 
+    val attributes: Seq[(String, ByteArray)], 
     val bodyLength: Int,
-    val body: immutable.Seq[ByteArray]
+    val body: Seq[ByteArray]
 ) extends Frame with AttributesSupport with BodySupport {
 
   def messageType = MessageTypes.Message

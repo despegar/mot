@@ -3,7 +3,6 @@ package mot.protocol
 import mot.buffer.ReadBuffer
 import mot.buffer.WriteBuffer
 import java.nio.charset.StandardCharsets.US_ASCII
-import scala.collection.immutable
 import scala.collection.mutable.HashMap
 import mot.util.ByteArray
 
@@ -22,7 +21,7 @@ import mot.util.ByteArray
  * ╎                                                               ╎
  * ╰───────────────────────────────────────────────────────────────╯
  */
-case class HelloFrame(val attributes: immutable.Seq[(String, ByteArray)]) extends Frame with AttributesSupport {
+case class HelloFrame(val attributes: Seq[(String, ByteArray)]) extends Frame with AttributesSupport {
 
   def messageType = MessageTypes.Hello
   val length = attributesLength()
@@ -50,7 +49,7 @@ case class HelloFrame(val attributes: immutable.Seq[(String, ByteArray)]) extend
 object HelloFrame extends FrameFactory[HelloFrame] {
     
   def fromMap(map: Map[String, String]) = 
-    HelloFrame(map.mapValues(a => ByteArray(a.getBytes(US_ASCII))).to[immutable.Seq])  
+    HelloFrame(map.mapValues(a => ByteArray(a.getBytes(US_ASCII))).toSeq)  
   
   def build(readBuffer: ReadBuffer, messageType: Byte, length: Int) = 
     HelloFrame(AttributesSupport.readAttributes(readBuffer))

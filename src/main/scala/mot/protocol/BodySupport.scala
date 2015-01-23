@@ -1,6 +1,5 @@
 package mot.protocol
 
-import scala.collection.immutable
 import java.io.OutputStream
 import mot.buffer.WriteBuffer
 import mot.buffer.ReadBuffer
@@ -8,7 +7,7 @@ import mot.util.ByteArray
 
 trait BodySupport {
   
-  val body: immutable.Seq[ByteArray]
+  val body: Seq[ByteArray]
 
   def dumpBody(os: OutputStream, maxLength: Int) = {
     if (body.size > 0) {
