@@ -29,7 +29,7 @@ Other approaches
 
 * [SPDY](http://www.chromium.org/spdy/spdy-whitepaper) -- a protocol than maintains HTTP semantics, but encodes the information in binary form; it also modifies the way the data is sent over the TCP connection (TLS actually); its goal is primarily to serve as a replacement for HTTP in the web.
 
-* [ZeroMQ](http://zeromq.org/) (ØMQ) -- an attempt to re-signify the Berkely sockets API, defining several types of interactions using delimited messages over (among others) a TCP transport.
+* [ZeroMQ](http://zeromq.org/) (ØMQ) -- an attempt to re-signify the Berkeley sockets API, defining several types of interactions using delimited messages over (among others) a TCP transport.
 
 * [Stream Control Transmission Protocol](http://tools.ietf.org/html/rfc4960) (SCTP) -- a transport-layer protocol to replace TCP, which provides multiplexed streams and stream-aware congestion control. SCTP solves the "idle connection" problem and also provides message delimitation. It does not provide, however, the mapping of requests to responses, which should be done at the application level. In spite of that, SCTP could be a good fit as a transport for Mot.
 
