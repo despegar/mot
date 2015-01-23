@@ -52,7 +52,8 @@ class Dumper(dumperPort: Int) extends StrictLogging {
   @volatile var closed = false
 
   def start() = {
-    serverSocket.bind(new InetSocketAddress(dumperPort))
+    // TODO: Make binding configurable
+    serverSocket.bind(new InetSocketAddress("127.0.0.1", dumperPort))
     acceptorThread.start()
   }
 

@@ -20,7 +20,8 @@ class Commands(context: Context, monitoringPort: Int) extends StrictLogging with
   val serverSocket = new ServerSocket()
 
   def start() = {
-    serverSocket.bind(new InetSocketAddress(monitoringPort))
+    // TODO: Make binding configurable
+    serverSocket.bind(new InetSocketAddress("127.0.0.1", monitoringPort))
     acceptorThread.start()
   }
   
