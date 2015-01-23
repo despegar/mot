@@ -28,8 +28,8 @@ class Test extends FunSuite with BeforeAndAfterAll {
   val target = Address("localhost", port)
   val invalidTarget = Address("localhost", port + 1)
 
-  val timeoutMs = 500
-  val pollMs = 100
+  val timeoutMs = 6000
+  val pollMs = 3000
 
   val iterations = 1000
 
@@ -106,6 +106,7 @@ class Test extends FunSuite with BeforeAndAfterAll {
     val requestSuccess = client.offerRequest(target, request, timeoutMs, promise)
     assert(requestSuccess)
     val incomingMessage = server.poll(pollMs, TimeUnit.MILLISECONDS)
+    assert(incomingMessage != null)
     val response = Message.fromString(Nil, "the-response")
     val responseSuccess = incomingMessage.responder.offer(response)
     assert(responseSuccess)
