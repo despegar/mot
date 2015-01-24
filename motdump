@@ -1,4 +1,16 @@
 #!/usr/bin/python
+
+'''
+Motdump is a command-line application that dumps the frames as they are received or transmitted, much like as tcpdump 
+does with the protocol segments. It features a rich set of filters, that allow to select which frames are dumped.
+
+The command is implemented with this program. The script opens a TCP connection against a Mot context running in the
+same host; the context is selected using the TCP port. 
+
+All the filtering and output logic are done in the server-side: the client script merely sends the arguments and then
+tunnels the response.
+'''
+
 import sys, socket, argparse, signal, textwrap
 
 examples = """\
@@ -32,6 +44,9 @@ examples = """\
 	  conjunction -- host <IP address> and not type heartbeat
 	  disjunction -- incoming or len > <number>
 	  grouping    -- (incoming or len > <number>) and not type heartbeat
+	  
+	The complete filter syntax is documented (and implemented) in: 
+	https://github.com/marianobarrios/mot/blob/master/src/main/scala/mot/dump/DumpFilterParser.scala
 	  
 	"""
 		

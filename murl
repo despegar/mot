@@ -1,4 +1,10 @@
 #!/usr/bin/python
+
+'''
+[Murl](murl) (short for "Mot Curl") implements the client-side Mot functionality and allows to use the protocol from 
+the command line.
+'''
+
 import sys
 import socket
 import argparse
