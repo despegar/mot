@@ -86,8 +86,3 @@ Murl
 ----
 
 A frequent reason to keep using legacy protocols is simply that useful tools do exist. In order to make the testing of Mot servers more convenient, a simple command-line application is provided. [Murl](murl) (short for "Mot Curl") implements the client-side Mot functionality and allows to use the protocol from the command line.
-
-Known limitations
------------------
-
-* Transport Layer Security (TLS) is not currently supported.
