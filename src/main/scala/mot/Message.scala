@@ -64,7 +64,7 @@ object Message {
   }
   
   def fromByteArray(attributes: Map[String, ByteArray], bodyPart: ByteArray): Message = 
-    fromByteArray(attributes, bodyPart)
+    fromByteArray(attributes.toSeq, bodyPart)
 
   def fromByteArray(bodyPart: ByteArray): Message = fromByteArray(Nil, bodyPart)
 
