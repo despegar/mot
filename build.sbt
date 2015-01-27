@@ -9,6 +9,7 @@ scalaVersion := "2.11.4"
 scalacOptions in ThisBuild ++= Seq("-unchecked", "-deprecation", "-optimize")
 
 //publishTo := Some("nexus-snapshots" at "http://nexus.despegar.it:8080/nexus/content/repositories/snapshots/")
+//publishTo := Some("nexus-snapshots" at "http://nexus:8080/nexus/content/repositories/releases-miami/")
 publishTo := Some("nexus-snapshots" at "http://nexus:8080/nexus/content/repositories/snapshots-miami/")
 
 libraryDependencies ++=
