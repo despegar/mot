@@ -10,6 +10,7 @@ import scala.util.Success
 import mot.ClientFlow
 import mot.IncomingResponse
 import mot.util.Util.FunctionToTimerTask
+import mot.Address
 
 class PendingResponse(
   val promise: Promise[IncomingResponse],
@@ -30,22 +31,22 @@ class PendingResponse(
   }
 
   private def timeout(): Unit = {
-    if (promise.tryComplete(IncomingResponse(Failure(new ResponseTimeoutException), flow))) {
+    if (promise.tryComplete(IncomingResponse(None, None, Failure(new ResponseTimeoutException), flow))) {
       connector.timeoutsCounter += 1
     }
     connector.pendingResponses.remove(requestId)
   }
 
-  def fulfill(message: Message) = synchronized {
+  def fulfill(conn: ClientConnection, message: Message) = synchronized {
     expirationTask.cancel()
-    promise.tryComplete(IncomingResponse(Success(message), flow))
+    promise.tryComplete(IncomingResponse(Some(conn.remoteAddress), Some(conn.localAddress), Success(message), flow))
   }
 
-  def error(error: Exception) = synchronized {
+  def error(conn: ClientConnection, error: Exception) = synchronized {
     // Errors can occur at any time, even before the expiration is scheduled
     if (expirationTask != null)
       expirationTask.cancel()
-    promise.tryComplete(IncomingResponse(Failure(error), flow))
+    promise.tryComplete(IncomingResponse(Some(conn.remoteAddress), Some(conn.localAddress), Failure(error), flow))
   }
 
 }

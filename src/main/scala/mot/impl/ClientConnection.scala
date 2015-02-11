@@ -44,7 +44,7 @@ class ClientConnection(val connector: ClientConnector, socketImpl: Socket)
   def reportClose(cause: Throwable): Unit = {
     logger.debug("Forgetting all promises of client connection: " + socket.impl.getLocalSocketAddress)
     for (pendingResponse <- connector.pendingResponses.values) {
-      pendingResponse.error(new InvalidClientConnectionException(cause))
+      pendingResponse.error(this, new InvalidClientConnectionException(cause))
     }
   }
 
@@ -60,7 +60,7 @@ class ClientConnection(val connector: ClientConnector, socketImpl: Socket)
       val message = new Message(response.attributes, body.length, body :: Nil)
       connector.pendingResponses.remove(response.reference) match {
         case res: PendingResponse =>
-          res.fulfill(message)
+          res.fulfill(this, message)
           connector.responsesReceivedCounter += 1
         case null =>
           // unexpected response arrived (probably expired and then collected)
@@ -100,7 +100,7 @@ class ClientConnection(val connector: ClientConnector, socketImpl: Socket)
   def reportMessageTooLarge(msg: Message, maxLength: Int, pendingResponse: Option[PendingResponse]): Unit = {
     val exception = new MessageTooLargeException(msg.bodyLength, maxLength)
     pendingResponse match {
-      case Some(pr) => pr.error(exception)
+      case Some(pr) => pr.error(this, exception)
       case None => logger.info(exception.getMessage)
     }
     connector.triedToSendTooLargeMessage += 1

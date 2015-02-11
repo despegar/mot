@@ -3,6 +3,8 @@ package mot.util
 import java.util.concurrent.BlockingQueue
 import java.util.concurrent.atomic.AtomicBoolean
 import mot.Message
+import mot.IncomingResponse
+import mot.IncomingResponse
 
 /**
  * A Promise that will enqueue the eventual value. It is guaranteed that, for each promise, at most one value will
