@@ -112,7 +112,6 @@ class ClientConnector(val client: Client, val target: Address) extends StrictLog
     currentConnection = Failure(notYetConnected)
     var lastAttempt = -1L
     while (!closed.get && currentConnection.isFailure) {
-      waitIfNecessary(lastAttempt)
       lastAttempt = System.nanoTime()
       try {
         val resolved = InetAddress.getAllByName(target.host).toSeq // DNS resolution
@@ -143,6 +142,7 @@ class ClientConnector(val client: Client, val target: Address) extends StrictLog
           dumper.dump(TcpEvent(prospConn, Direction.Outgoing, Operation.FailedNameResolution, e.getMessage))
           currentConnection = Failure(e)
       }
+      waitIfNecessary(lastAttempt)
     }
     if (closed.get)
       currentConnection = Failure(new LocalClosedException)
