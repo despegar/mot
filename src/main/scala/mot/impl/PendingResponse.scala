@@ -31,7 +31,8 @@ class PendingResponse(
   }
 
   private def timeout(): Unit = {
-    if (promise.tryComplete(IncomingResponse(None, None, Failure(new ResponseTimeoutException), flow))) {
+    val remoteAddress = connector.target // use unresolved address
+    if (promise.tryComplete(IncomingResponse(remoteAddress, None, Failure(new ResponseTimeoutException), flow))) {
       connector.timeoutsCounter += 1
     }
     connector.pendingResponses.remove(requestId)
@@ -39,14 +40,14 @@ class PendingResponse(
 
   def fulfill(conn: ClientConnection, message: Message) = synchronized {
     expirationTask.cancel()
-    promise.tryComplete(IncomingResponse(Some(conn.remoteAddress), Some(conn.localAddress), Success(message), flow))
+    promise.tryComplete(IncomingResponse(conn.remoteAddress, Some(conn.localAddress), Success(message), flow))
   }
 
   def error(conn: ClientConnection, error: Exception) = synchronized {
     // Errors can occur at any time, even before the expiration is scheduled
     if (expirationTask != null)
       expirationTask.cancel()
-    promise.tryComplete(IncomingResponse(Some(conn.remoteAddress), Some(conn.localAddress), Failure(error), flow))
+    promise.tryComplete(IncomingResponse(conn.remoteAddress, Some(conn.localAddress), Failure(error), flow))
   }
 
 }
