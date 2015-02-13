@@ -4,7 +4,7 @@ name := "mot"
 
 version := "0.8-RC5"
 
-scalaVersion := "2.11.4"
+scalaVersion := "2.11.5"
 
 scalacOptions in ThisBuild ++= Seq("-unchecked", "-deprecation", "-optimize")
 
@@ -14,18 +14,16 @@ publishTo := Some("nexus-snapshots" at "http://nexus.despegar.it:8080/nexus/cont
 //publishTo := Some("nexus-snapshots" at "http://nexus:8080/nexus/content/repositories/snapshots-miami/")
 
 libraryDependencies ++=
-  "org.scala-lang.modules" %% "scala-parser-combinators" % "1.0.2" ::
+  "org.scala-lang.modules" %% "scala-parser-combinators" % "1.0.3" ::
   "com.typesafe.scala-logging" %% "scala-logging-slf4j" % "2.1.2" ::
   "ch.qos.logback" % "logback-classic" % "1.1.2" % Test ::
-  "io.netty" % "netty-common" % "4.0.23.Final" ::
-  "org.scalatest" %% "scalatest" % "2.2.1" % "test" ::
-  "org.hdrhistogram" % "HdrHistogram" % "2.1.3" % "test" ::
+  "io.netty" % "netty-common" % "4.0.25.Final" ::
+  "org.scalatest" %% "scalatest" % "2.2.4" % "test" ::
+  "org.hdrhistogram" % "HdrHistogram" % "2.1.4" % "test" ::
   Nil
   
 // Do not include src/{main,test}/java in the configuration, to avoid having sbt-eclipse generate them empty
-
 unmanagedSourceDirectories in Compile := (scalaSource in Compile).value :: Nil
-
 unmanagedSourceDirectories in Test := (scalaSource in Test).value :: Nil
   
 fork := true
