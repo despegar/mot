@@ -19,7 +19,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock
 import java.util.concurrent.locks.ReentrantLock
 import java.util.concurrent.locks.Lock
 
-object TestLantency extends TestClient {
+object TestLatency extends TestClient {
 
   def main(args: Array[String]): Unit = {
     val histogram = new ConcurrentHistogram(60000000, 3)
@@ -35,7 +35,7 @@ object TestLantency extends TestClient {
     val body = "hola, la concha de tu madre"
     val (realTarget, message) = proxyOpt match {
       case Some(proxy) => (proxy, Message.fromString(Map("Proxy" -> ByteArray(target.toString.getBytes)), body))
-      case None => (target, Message.fromString(Nil, body))
+      case None => (target, Message.fromString(body))
     }
     @volatile var closed = false
     val counter = new AtomicLong

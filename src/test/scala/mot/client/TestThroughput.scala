@@ -26,7 +26,7 @@ object TestThroughput extends TestClient {
     val body = "x"
     val (realTarget, message) = proxyOpt match {
       case Some(proxy) => (proxy, Message.fromString(Map("Proxy" -> ByteArray(target.toString.getBytes)), body))
-      case None => (target, Message.fromString(Nil, body))
+      case None => (target, Message.fromString(body))
     }
     @volatile var closed = false
     def send() = {

@@ -8,49 +8,45 @@ import mot.Server
 import java.util.concurrent.TimeUnit
 import scala.io.StdIn
 import java.util.concurrent.atomic.AtomicLong
+import mot.IncomingMessage
+import java.util.concurrent.SynchronousQueue
+import java.util.concurrent.ThreadPoolExecutor
+import scala.util.control.NonFatal
+import java.util.concurrent.LinkedBlockingQueue
 
 object MirrorServer extends StrictLogging {
 
   val responseOverflow = new AtomicLong
-  
-  def main(args: Array[String]) = {
+
+  def main(args: Array[String]): Unit = {
     val ctx = new Context(monitoringPort = args(0).toInt, dumpPort = args(1).toInt)
+    val executor = new ThreadPoolExecutor(
+        2, 2, 0L, TimeUnit.SECONDS, new LinkedBlockingQueue[Runnable](1000), new ThreadPoolExecutor.CallerRunsPolicy)
     val server = new Server(
       ctx,
       "test-server",
+      executor,
+      handleRequest,
       bindPort = 5000,
       maxAcceptedLength = 1000000000,
-      receivingQueueSize = 200000,
       sendingQueueSize = 200000,
       readerBufferSize = 200000,
       writerBufferSize = 200000)
-    @volatile var closed = false
-    def receive() = {
-      while (!closed) {
-        val incoming = server.poll(200, TimeUnit.MILLISECONDS)
-        if (incoming != null) {
-          try {
-            for (responder <- incoming.responderOption) {
-              val success = responder.offer(Message.fromByteArrays(Nil, incoming.message.bodyParts: _*))
-              if (!success)
-                responseOverflow.incrementAndGet()
-            }
-          } catch {
-            case e: Exception => logger.info("Cannot send response", e)
-          }
-        }
-      }
-    }
-    val serverThread1 = new Thread(receive _, "server-thread-1")
-    val serverThread2 = new Thread(receive _, "server-thread-2")
-    serverThread1.start()
-    serverThread2.start()
     Console.println("Press return to exit")
     StdIn.readLine()
     ctx.close()
-    closed = true
-    serverThread1.join()
-    serverThread2.join()
+    executor.shutdown()
+    executor.awaitTermination(Long.MaxValue, TimeUnit.NANOSECONDS)
+  }
+
+  def handleRequest(incoming: IncomingMessage): Unit = try {
+    for (responder <- incoming.responderOption) {
+      val success = responder.offer(Message.fromByteArrays(incoming.message.bodyParts: _*))
+      if (!success)
+        responseOverflow.incrementAndGet()
+    }
+  } catch {
+    case NonFatal(e) => logger.info("Cannot send response", e)
   }
 
 }

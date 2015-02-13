@@ -30,6 +30,8 @@ import java.util.concurrent.ScheduledThreadPoolExecutor
 import mot.util.NamedThreadFactory
 import scala.concurrent.duration.Duration
 import mot.util.ByteArray
+import java.util.concurrent.ThreadPoolExecutor
+import mot.util.ExecutorPromise
 
 /**
  * Mot reverse proxy
@@ -39,7 +41,7 @@ object Proxy {
   def main(args: Array[String]) {
     val context = new Context(monitoringPort = args(0).toInt, dumpPort = args(1).toInt)
     val proxy = new Proxy(context)
-    proxy.start()
+    proxy.run()
   }
 
 }
@@ -48,14 +50,21 @@ class Proxy(val context: Context) extends StrictLogging {
 
   val name = "proxy"
 
+  val frontendExecutor = new ThreadPoolExecutor(
+    2, 2, Long.MaxValue, TimeUnit.MILLISECONDS, new LinkedBlockingQueue[Runnable](10000), new ThreadPoolExecutor.CallerRunsPolicy)
+
   val frontend = new Server(
     context,
     name,
+    frontendExecutor,
+    requestHandler,
     6000,
-    receivingQueueSize = 100000,
     sendingQueueSize = 100000,
     readerBufferSize = 200000,
     writerBufferSize = 200000)
+
+  val backendExecutor = new ThreadPoolExecutor(
+    1, 1, Long.MaxValue, TimeUnit.MILLISECONDS, new LinkedBlockingQueue[Runnable](10000), new ThreadPoolExecutor.CallerRunsPolicy)
 
   val backend = new Client(
     context,
@@ -70,28 +79,23 @@ class Proxy(val context: Context) extends StrictLogging {
 
   val responseOverflow = new AtomicLong
   val messageErrors = new AtomicLong
-  
+
   @volatile var closed = false
 
-  def start() {
-    val requestThread1 = new Thread(requestLoop _, "request-1")
-    val requestThread2 = new Thread(requestLoop _, "request-2")
-    val responseThread = new Thread(responseLoop _, "response")
+  def run() {
     val flowMonitorThread = new Thread(flowLoop _, "closed-flows-monitor")
-    requestThread1.start()
-    requestThread2.start()
-    responseThread.start()
     flowMonitorThread.start()
     Console.println("Press return to exit")
     StdIn.readLine()
     context.close()
     closed = true
-    requestThread1.join()
-    requestThread2.join()
-    responseThread.join()
-    flowMonitorThread.join()
+    frontendExecutor.shutdown()
+    backendExecutor.shutdown()
     flowExpirator.shutdown()
-
+    frontendExecutor.awaitTermination(Long.MaxValue, TimeUnit.MILLISECONDS)
+    backendExecutor.awaitTermination(Long.MaxValue, TimeUnit.MILLISECONDS)
+    flowExpirator.awaitTermination(Long.MaxValue, TimeUnit.MILLISECONDS)
+    flowMonitorThread.join()
   }
 
   def getFlow(address: Address) = {
@@ -109,46 +113,38 @@ class Proxy(val context: Context) extends StrictLogging {
 
   class RequestError(msg: String) extends Exception(msg)
 
-  def requestLoop() = {
-    while (!closed) {
-      frontend.poll(200, TimeUnit.MILLISECONDS) match {
-        case msg: IncomingMessage =>
-          try {
-            val proxyAttr = msg.message.firstAttribute("Proxy").getOrElse {
-              throw new RequestError("'Proxy' attribute needed")
-            }
-            val target = try {
-              Address.fromString(proxyAttr.asString(US_ASCII))
-            } catch {
-              case e: IllegalArgumentException => throw new RequestError(e.getMessage)
-            }
-            val success = msg.responderOption match {
-              case Some(resp) =>
-                val promise = new ContextualPromise(responseQueue, resp)
-                val flow = getFlow(msg.remoteAddress)
-                if (flow.isOpen) {
-                  backend.offerRequest(target, msg.message, resp.timeoutMs, promise, flow)
-                } else {
-                  // cannot send messages associated with a closed flow
-                  responseOverflow.incrementAndGet()
-                  true
-                }
-              case None =>
-                backend.offerMessage(target, msg.message)
-            }
-            if (!success)
-              respondError(msg.responderOption, 503, "Backend busy")
-          } catch {
-            case e: RequestError =>
-              msg.responderOption.map(r => sendErrorIfPossible(r, 400, e.getMessage))
-              logger.debug("Request error: " + e.getMessage)
-            case NonFatal(e) =>
-              msg.responderOption.map(r => sendErrorIfPossible(r, 500, e.getMessage))
-              logger.debug("Error", e)
-          }
-        case null => // pass
-      }
+  def requestHandler(msg: IncomingMessage): Unit = try {
+    val proxyAttr = msg.message.firstAttribute("Proxy").getOrElse {
+      throw new RequestError("'Proxy' attribute needed")
     }
+    val target = try {
+      Address.fromString(proxyAttr.asString(US_ASCII))
+    } catch {
+      case e: IllegalArgumentException => throw new RequestError(e.getMessage)
+    }
+    val success = msg.responderOption match {
+      case Some(resp) =>
+        val promise = new ExecutorPromise(backendExecutor, responseHandler(resp))
+        val flow = getFlow(msg.remoteAddress)
+        if (flow.isOpen) {
+          backend.offerRequest(target, msg.message, resp.timeoutMs, promise, flow)
+        } else {
+          // cannot send messages associated with a closed flow
+          responseOverflow.incrementAndGet()
+          true
+        }
+      case None =>
+        backend.offerMessage(target, msg.message)
+    }
+    if (!success)
+      respondError(msg.responderOption, 503, "Backend busy")
+  } catch {
+    case e: RequestError =>
+      msg.responderOption.map(r => sendErrorIfPossible(r, 400, e.getMessage))
+      logger.debug("Request error: " + e.getMessage)
+    case NonFatal(e) =>
+      msg.responderOption.map(r => sendErrorIfPossible(r, 500, e.getMessage))
+      logger.debug("Error", e)
   }
 
   def respondError(responder: Option[Responder], status: Int, msg: String) = {
@@ -164,36 +160,28 @@ class Proxy(val context: Context) extends StrictLogging {
 
   val attr503 = Map("status" -> ByteArray(503.toString.getBytes))
 
-  def responseLoop() = {
-    while (!closed) {
-      responseQueue.poll(200, TimeUnit.MILLISECONDS) match {
-        case (incomingResponse, responder) =>
-          try {
-            val responseSuccess = incomingResponse.result match {
-              case Success(msg) => responder.offer(msg)
-              case Failure(exception) => responder.offer(Message.fromString(attr503, exception.getMessage))
-            }
-            if (!responseSuccess)
-              responseOverflow.incrementAndGet()
-            try {
-              if (responder.connectionHandler.isSaturated(responder.serverFlowId)) {
-                val backendFlow = incomingResponse.clientFlow
-                if (backendFlow.closeFlow())
-                  logger.debug("Closing flow: " + backendFlow)
-                closedFlows.put(FlowAssociation(responder.connectionHandler, responder.serverFlowId), backendFlow)
-              }
-            } catch {
-              case e: IllegalStateException => // flow expired
-              case e: InvalidServerConnectionException => // connection expired
-            }
-          } catch {
-            case NonFatal(e) =>
-              sendErrorIfPossible(responder, 500, e.getMessage)
-              logger.debug("Error", e)
-          }
-        case null => // pass
-      }
+  def responseHandler(responder: Responder)(incomingResponse: IncomingResponse): Unit = try {
+    val responseSuccess = incomingResponse.result match {
+      case Success(msg) => responder.offer(msg)
+      case Failure(exception) => responder.offer(Message.fromString(attr503, exception.getMessage))
     }
+    if (!responseSuccess)
+      responseOverflow.incrementAndGet()
+    try {
+      if (responder.connectionHandler.isSaturated(responder.serverFlowId)) {
+        val backendFlow = incomingResponse.clientFlow
+        if (backendFlow.closeFlow())
+          logger.debug("Closing flow: " + backendFlow)
+        closedFlows.put(FlowAssociation(responder.connectionHandler, responder.serverFlowId), backendFlow)
+      }
+    } catch {
+      case e: IllegalStateException => // flow expired
+      case e: InvalidServerConnectionException => // connection expired
+    }
+  } catch {
+    case NonFatal(e) =>
+      sendErrorIfPossible(responder, 500, e.getMessage)
+      logger.debug("Error", e)
   }
 
   def sendErrorIfPossible(resp: mot.Responder, status: Int, msg: String) = {
@@ -215,7 +203,7 @@ class Proxy(val context: Context) extends StrictLogging {
             it.remove()
             logger.debug("Opening flow: " + backendFlow)
             backendFlow.openFlow()
-            
+
           }
         } catch {
           case e: IllegalStateException => it.remove() // flow expired
@@ -225,16 +213,16 @@ class Proxy(val context: Context) extends StrictLogging {
       Thread.sleep(200)
     }
   }
-  
+
   val flowExpirator = {
     val ex = new ScheduledThreadPoolExecutor(1, new NamedThreadFactory(s"mot-proxy-flow-expirator"))
     val runDelay = Duration(10, TimeUnit.SECONDS)
     ex.scheduleWithFixedDelay(flowExpiratorTask _, runDelay.length, runDelay.length, runDelay.unit)
     ex
   }
-  
+
   val flowGc = Duration(5, TimeUnit.MINUTES)
-  
+
   private def flowExpiratorTask() = {
     try {
       val threshold = System.nanoTime() - flowGc.toNanos
@@ -251,5 +239,5 @@ class Proxy(val context: Context) extends StrictLogging {
       case NonFatal(e) => context.uncaughtErrorHandler.handle(e)
     }
   }
-  
+
 }

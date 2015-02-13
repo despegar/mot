@@ -1,7 +1,6 @@
 package mot.impl
 
 import java.net.Socket
-import java.util.concurrent.BlockingQueue
 import mot.protocol.Frame
 import mot.protocol.RequestFrame
 import java.util.concurrent.TimeUnit
@@ -16,12 +15,13 @@ import mot.Server
 import mot.MessageTooLargeException
 import mot.IncomingMessage
 import mot.Responder
-import java.util.concurrent.atomic.AtomicBoolean
 import mot.dump.TcpEvent
 import mot.dump.Direction
 import mot.dump.Operation
 import mot.protocol.FlowControlFrame
 import mot.ServerConnectionHandler
+import mot.IncomingMessage
+import java.util.concurrent.RejectedExecutionException
 
 class ServerConnection(val server: Server, socketImpl: Socket) extends AbstractConnection(server, socketImpl) {
 
@@ -101,8 +101,7 @@ class ServerConnection(val server: Server, socketImpl: Socket) extends AbstractC
     receivedUnrespondable += 1
     val hello = helloPromise.result
     val message = new Message(frame.attributes, body.length, body :: Nil)
-    val incoming = IncomingMessage(None, remoteAddress, localAddress, hello.sender, hello.maxLength, message)
-    offer(server.receivingQueue, incoming, isClosing _)
+    handle(IncomingMessage(None, remoteAddress, localAddress, hello.sender, hello.maxLength, message))
   }
 
   def processRequest(frame: RequestFrame): Unit = {
@@ -111,15 +110,18 @@ class ServerConnection(val server: Server, socketImpl: Socket) extends AbstractC
     val responder = Some(new Responder(handler, frame.requestId, frame.timeout, frame.flowId))
     val message = new Message(frame.attributes, body.length, body :: Nil)
     val hello = helloPromise.result
-    val incoming = IncomingMessage(responder, remoteAddress, localAddress, hello.sender, hello.maxLength, message)
-    offer(server.receivingQueue, incoming, isClosing _)
+    handle(IncomingMessage(responder, remoteAddress, localAddress, hello.sender, hello.maxLength, message))
   }
-
-  def offer[A](queue: BlockingQueue[A], element: A, subscriberClosed: () => Boolean): Unit = {
-    var inserted = false
-    while (!inserted && !subscriberClosed()) {
-      inserted = queue.offer(element, 300, TimeUnit.MILLISECONDS)
-    }
-  }
-
+  
+   private def handle(incoming: IncomingMessage): Unit = {
+     try {
+       server.executor.execute(() => server.handler(incoming))
+     } catch {
+       case e: RejectedExecutionException => 
+         // This exception can be thrown in the case of executor shutdown or if the executor is overload and the
+         // rejection policy throws (AbortPolicy does that). Neither is an expected use case so we report it.
+         logger.warn("Rejected execution")
+     }
+   }
+   
 }

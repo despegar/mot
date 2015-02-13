@@ -17,6 +17,8 @@ import mot.util.Util
 import java.util.concurrent.ScheduledThreadPoolExecutor
 import mot.util.NamedThreadFactory
 import scala.concurrent.duration.Duration
+import java.util.concurrent.Executor
+import java.util.concurrent.ThreadPoolExecutor
 
 /**
  * Mot Server.
@@ -28,8 +30,8 @@ import scala.concurrent.duration.Duration
  * @param requestMaxLength maximum allowable request length, in bytes, this length is informed to the client.
  *     Connections that send messages longer than the maximum are dropped to a simple DOS attack with
  *     larger-than-allowed messages.
- * @param receivingQueueSize maximum length (in messages) of the receiving queue size. Too big a value uses too much 
- *     memory, too little can degrade latency as the queue is empty too much time. There is only one queue. 
+ * @param receivingQueueSize maximum length (in messages) of the receiving queue size. Too big a value uses too much
+ *     memory, too little can degrade latency as the queue is empty too much time. There is only one queue.
  * @param sendingQueueSize maximum length (in messages) of the sending queue size. Too big a value uses too much memory,
  *     too little can degrade latency as the queue is empty too much time. There is one queue per counterpart.
  * @param readerBufferSize size (in bytes) of the reader buffer
@@ -38,23 +40,23 @@ import scala.concurrent.duration.Duration
 class Server(
   val context: Context,
   val name: String,
+  val executor: Executor,
+  val handler: IncomingMessage => Unit,
   val bindPort: Int,
   val bindAddress: InetAddress = InetAddress.getByName("0.0.0.0"),
   val maxAcceptedLength: Int = 100000,
-  val receivingQueueSize: Int = 1000,
   val sendingQueueSize: Int = 1000,
   val readerBufferSize: Int = 10000,
-  val writerBufferSize: Int = 5000) extends MotParty with StrictLogging {
+  val writerBufferSize: Int = 5000)
+  extends MotParty with StrictLogging {
 
   val sendingQueueSaturationThreshold = 0.85
   val sendingQueueRecoveryThreshold = 0.4
-  
+
   private val serverSocket = new ServerSocket
   private val bindSocketAddress = new InetSocketAddress(bindAddress, bindPort)
   serverSocket.bind(bindSocketAddress)
   logger.info("Server bound to " + bindSocketAddress)
-
-  private[mot] val receivingQueue = new LinkedBlockingQueue[IncomingMessage](receivingQueueSize)
 
   private[mot] val connections = new ConcurrentHashMap[Address, ServerConnection]
 
@@ -80,11 +82,6 @@ class Server(
   }
 
   /**
-   * Receive a message. Block until one is available or the timeout expires.
-   */
-  def poll(timeout: Long, unit: TimeUnit): IncomingMessage = receivingQueue.poll(timeout, unit)
-
-  /**
    * Close the server. Calling this method terminates all threads and connections.
    */
   def close(): Unit = {
@@ -98,7 +95,6 @@ class Server(
     context.servers.remove(name)
   }
 
-  
   private val flowExpirator = {
     val ex = new ScheduledThreadPoolExecutor(1, new NamedThreadFactory(s"mot-server($name)-flow-expirator"))
     val runDelay = Duration(60, TimeUnit.SECONDS)
@@ -113,5 +109,5 @@ class Server(
       case NonFatal(e) => context.uncaughtErrorHandler.handle(e)
     }
   }
-  
+
 }
