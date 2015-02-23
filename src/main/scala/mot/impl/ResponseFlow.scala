@@ -1,8 +1,9 @@
 package mot.impl
 
-import mot.util.Offerable
+import mot.queue.LinkedBlockingMultiQueue
 
-class ResponseFlow(connection: ServerConnection, val id: Int, val queue: Offerable[OutgoingResponse]) {
+class ResponseFlow(
+    connection: ServerConnection, val id: Int, val queue: LinkedBlockingMultiQueue[Int, OutgoingResponse]#SubQueue) {
   
   private var _lastUse = System.nanoTime()
   

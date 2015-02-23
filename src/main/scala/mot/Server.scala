@@ -4,7 +4,6 @@ import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.net.ServerSocket
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
 import scala.collection.JavaConversions.collectionAsScalaIterable
 import scala.util.control.NonFatal
@@ -25,13 +24,13 @@ import java.util.concurrent.ThreadPoolExecutor
  *
  * @param context the context in which this server will be registered
  * @param name the name of this server, must be unique in the context and will be reported to the clients
+ * @param executor Executor that will be used to process incoming messages
+ * @param handler function that will be submitted to the executor for every incoming message
  * @param bindPort TCP port to bind
  * @param bindAddress IP address to bind
- * @param requestMaxLength maximum allowable request length, in bytes, this length is informed to the client.
+ * @param maxAcceptedLength maximum allowable request length, in bytes, this length is informed to the client.
  *     Connections that send messages longer than the maximum are dropped to a simple DOS attack with
  *     larger-than-allowed messages.
- * @param receivingQueueSize maximum length (in messages) of the receiving queue size. Too big a value uses too much
- *     memory, too little can degrade latency as the queue is empty too much time. There is only one queue.
  * @param sendingQueueSize maximum length (in messages) of the sending queue size. Too big a value uses too much memory,
  *     too little can degrade latency as the queue is empty too much time. There is one queue per counterpart.
  * @param readerBufferSize size (in bytes) of the reader buffer

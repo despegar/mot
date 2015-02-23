@@ -30,8 +30,8 @@ class ClientConnection(val connector: ClientConnector, socketImpl: Socket)
 
   val remoteHelloLatch = helloPromise.latch
 
-  def remoteNameOption() = helloPromise.value.map(_.name)
-  def remoteMaxLength() = helloPromise.value.map(_.maxLength)
+  def remoteNameOption = helloPromise.value.map(_.name)
+  def remoteMaxLength = helloPromise.value.map(_.maxLength)
 
   def isClosed() = socket.isClosed()
 
@@ -73,7 +73,8 @@ class ClientConnection(val connector: ClientConnector, socketImpl: Socket)
 
   def processOutgoing(event: OutgoingEvent): Unit = event match {
     case OutgoingMessage(message, pendingRes) => sendMessage(message, pendingRes, remoteMaxLength.get)
-    case FlowNotification(flowId, open) => writeMessage(FlowControlFrame(flowId, open))
+    case FlowNotification(flowId, open) => writeFrame(FlowControlFrame(flowId, open))
+    case _ => throw new MatchError(event) // avoid warning
   }
 
   private def sendMessage(msg: Message, pendingResponse: Option[PendingResponse], maxLength: Int): Unit = {
@@ -84,10 +85,10 @@ class ClientConnection(val connector: ClientConnector, socketImpl: Socket)
         case Some(pr) =>
           connector.respondableSentCounter += 1
           val frame = RequestFrame(pr.requestId, pr.flow.id, pr.timeoutMs, msg.attributes, msg.bodyLength, msg.bodyParts)
-          writeMessage(frame)
+          writeFrame(frame)
         case None =>
           connector.unrespondableSentCounter += 1
-          writeMessage(MessageFrame(msg.attributes, msg.bodyLength, msg.bodyParts))
+          writeFrame(MessageFrame(msg.attributes, msg.bodyLength, msg.bodyParts))
       }
     }
   }

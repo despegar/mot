@@ -27,7 +27,7 @@ Other approaches
 
 * Plain sockets -- it is always possible to use the TCP streams directly (and it is indeed done by a lot of applications); this, however, puts the burden of doing all the repetitive tasks (delimitation, response association, connection lifecycle management) on the application programmer.
 
-* [SPDY](http://www.chromium.org/spdy/spdy-whitepaper) -- a protocol than maintains HTTP semantics, but encodes the information in binary form; it also modifies the way the data is sent over the TCP connection (TLS actually); its goal is primarily to serve as a replacement for HTTP in the web.
+* [HTTP/2](https://tools.ietf.org/html/draft-ietf-httpbis-http2) (previously known as SPDY) -- a protocol than maintains HTTP/1.x semantics, but encodes the information in binary form; it also modifies the way the data is sent over the TCP connection (TLS actually), allowing connection multiplexing. Its goal is primarily to serve as a replacement for HTTP in the web.
 
 * [ZeroMQ](http://zeromq.org/) (ØMQ) -- an attempt to re-signify the Berkeley sockets API, defining several types of interactions using delimited messages over (among others) a TCP transport.
 
@@ -44,12 +44,21 @@ A key feature of Mot is that the only mapping it provides is between requests an
 
 Messages and requests can be send intermixed between the same parties. They share the same structure on the wire, the difference being that requests leave information (and a timer) in the client, to map the response when it arrives (or report the timeout if it does not).
 
-Keeping messages relatively small (the actual size is actually configurable) also prevents head-of-line blocking from being an issue.
+Keeping messages relatively small (the actual size is actually configurable) also prevents head-of-line blocking from being an issue. It also simplifies flow control significantly.
 
 Messages
 --------
 
 From a user's point of view, Mot messages consist of a delimited byte array. The maximum size of the array that can be received is communicated by each party in the connection handshake. Messages also support attributes: a sequence of name-value associations that can be used to pass meta-data. The names are short ASCII string and the values are short byte arrays. Mot does not interpret the contents of the attributes in any way, they exist solely for the user's convenience. Attributes can be used to pass the header when encapsulating HTTP requests and responses.
+
+Flow control
+------------
+
+The fact that the protocol makes shared use of a TCP connection introduces the need of flow control for proxy servers. These servers operate on behalf of others and receive selective back-pressure. Regarding requests, upon the case of a slow back-end, the server can respond with some application-level message indicating that the other side is unavailable or overloaded (akin to HTTP 503 responses). However, in the case of responses, if the front-end slows down (i.e. stops accepting data at the TCP level) the only way to avoid buffering (or discarding) is to tell the back-end to stop sending responses.
+
+Mot uses a very minimalistic flow control mechanism. Each request carries a "flow identification", a opaque integer. If flow control is not desired, this value is just zero, which is reserved to the "main flow". The proxy server should maintain some mapping between front-end connections and flows. If a front-end client slows down, the proxy server "closes" the corresponding flow, sending a specific frame. The back-end server must then stop sending responses, until the flow is opened again.
+
+It is worth noting that this mechanism does not operate on bytes, but in whole messages. Being a small-message protocol makes it easy to require that all parties be prepared to buffer whole messages.
 
 Wire Format
 -----------
@@ -64,6 +73,8 @@ The present implementation uses blocking IO, with one thread reading and other w
 Netty's implementation of the hashed wheel timer is used to keep track of request expirations. Tests showed it is quite more scalable than the JDK-provided ScheduledThreadPoolExecutor, which uses a heap internally. The hashed wheel timer scales well into the hundreds of thousands of requests per second. Its trick is to trade speed for some resolution, which can be acceptable in the case of IO timeouts. This is the only external dependency.
 
 As it is commonly done with HTTP and other protocols, when the target is specified using a domain name (not an IP address), the implementation will try to establish a connection with all the A and AAAA records associated with the name, until one eventually succeeds.
+
+With respect to concurrency, all the interface is thread-safe. In particular, messages and responses can be sent by several threads safely. Internally, the access to TCP connections is serialized using concurrent queues. There is one queue per each connection side (each pair of distinct Mot parties uses one queue for sending messages from their side). The queue used is a variant of the [LinkedBlockingQueue](http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/LinkedBlockingQueue.html) that manages priorities and supports sub-queues. It is called [LinkedBlockingMultiQueue](src/main/scala/mot/queue/LinkedBlockingMultiQueue.scala).
 
 Regarding performance, a single client-server pair can easily reach a throughput in the order of hundreds of thousands of request-response round-trips, using two quad-core instances. The latency in idle hardware of a request-response round-trip is in the order of the single millisecond.
 

@@ -36,8 +36,8 @@ class ServerConnection(val server: Server, socketImpl: Socket) extends AbstractC
 
   val remoteHelloLatch = helloPromise.latch
 
-  def remoteNameOption() = helloPromise.value.map(_.sender)
-  def remoteMaxLength() = helloPromise.value.map(_.maxLength)
+  def remoteNameOption = helloPromise.value.map(_.sender)
+  def remoteMaxLength = helloPromise.value.map(_.maxLength)
 
   // Need not be atomic as the are incremented only in connection thread
   @volatile var receivedRespondable = 0L
@@ -80,8 +80,9 @@ class ServerConnection(val server: Server, socketImpl: Socket) extends AbstractC
   def processOutgoing(event: OutgoingEvent): Unit = event match {
     case outRes: OutgoingResponse =>
       val msg = outRes.message
-      writeMessage(ResponseFrame(outRes.requestId, msg.attributes, msg.bodyLength, msg.bodyParts))
+      writeFrame(ResponseFrame(outRes.requestId, msg.attributes, msg.bodyLength, msg.bodyParts))
       sentResponses += 1
+    case _ => throw new MatchError(event) // avoid warning
   }
 
   def processHello(hello: HelloFrame): Unit = {
@@ -119,8 +120,11 @@ class ServerConnection(val server: Server, socketImpl: Socket) extends AbstractC
      } catch {
        case e: RejectedExecutionException => 
          // This exception can be thrown in the case of executor shutdown or if the executor is overload and the
-         // rejection policy throws (AbortPolicy does that). Neither is an expected use case so we report it.
-         logger.warn("Rejected execution")
+         // rejection policy throws (AbortPolicy does that).
+         logger.debug("Incoming mesage task rejected.")
+       case e: Throwable => 
+         // Be defensive
+         logger.warn("Caught exception submiting tasks for incoming message", e)
      }
    }
    

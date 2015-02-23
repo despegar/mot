@@ -15,7 +15,7 @@ import java.io.EOFException
 import java.io.IOException
 import mot.dump.Operation
 import mot.dump.TcpEvent
-import mot.util.Pollable
+import mot.queue.Pollable
 import mot.protocol.ProtocolSemanticException
 import mot.GreetingAbortedException
 import mot.protocol.ByeFrame
@@ -68,14 +68,14 @@ abstract class AbstractConnection(val party: MotParty, val socketImpl: Socket) e
 
   def isClosing() = exception.get != null
 
-  def readMessage(): Frame = {
+  def readFrame(): Frame = {
     val msg = Frame.read(readBuffer, party.maxAcceptedLength)
     party.context.dumper.dump(MotEvent(this, Direction.Incoming, msg))
     lastReception = System.nanoTime()
     msg
   }
 
-  def writeMessage(msg: Frame): Unit = {
+  def writeFrame(msg: Frame): Unit = {
     party.context.dumper.dump(MotEvent(this, Direction.Outgoing, msg))
     msg.write(writeBuffer)
     lastWrite = System.nanoTime()
@@ -92,7 +92,7 @@ abstract class AbstractConnection(val party: MotParty, val socketImpl: Socket) e
   private def sendHeartbeatIfNeeded(): Unit = {
     val now = System.nanoTime()
     if (now - lastWrite >= Protocol.HeartBeatIntervalNs)
-      writeMessage(HeartbeatFrame())
+      writeFrame(HeartbeatFrame())
   }
 
   private def closeSocket(e: Throwable): Unit = {
@@ -112,7 +112,7 @@ abstract class AbstractConnection(val party: MotParty, val socketImpl: Socket) e
   
   def writerLoop(): Unit = {
     try {
-      writeMessage(localHello.toHelloMessage)
+      writeFrame(localHello.toHelloMessage)
       writeBuffer.flush()
       try {
         if (!wait(remoteHelloLatch, stop = isClosing _))
@@ -127,7 +127,7 @@ abstract class AbstractConnection(val party: MotParty, val socketImpl: Socket) e
             case null =>
               val now = System.nanoTime()
               if (now - lastWrite >= Protocol.HeartBeatIntervalNs) {
-                writeMessage(HeartbeatFrame())
+                writeFrame(HeartbeatFrame())
                 writeBuffer.flush()
               }
           }
@@ -136,8 +136,8 @@ abstract class AbstractConnection(val party: MotParty, val socketImpl: Socket) e
         case e: GreetingAbortedException => // pass
       }
       exception.get match {
-        case e: LocalClosedException => writeMessage(ByeFrame())
-        case e: ProtocolSemanticException => writeMessage(ResetFrame(e.getMessage))
+        case e: LocalClosedException => writeFrame(ByeFrame())
+        case e: ProtocolSemanticException => writeFrame(ResetFrame(e.getMessage))
         case _ => // pass
       }
       writeBuffer.flush()
@@ -164,14 +164,14 @@ abstract class AbstractConnection(val party: MotParty, val socketImpl: Socket) e
   def readerLoop(): Unit = {
     try {
       prepareSocket(socket.impl)
-      readMessage() match {
+      readFrame() match {
         case hello: HelloFrame => processHello(hello)
         case reset: ResetFrame => throw new ResetException(reset.error)
         case any: Frame => throw new ProtocolSemanticException(
           s"Unexpected frame: ${any.messageType}. First frame must be a hello")
       }
       while (!isClosing) {
-        val frame = readMessage()
+        val frame = readFrame()
         frame match {
           case unknown: UnknownFrame => logger.info("Received unknown frame. Ignoring")
           case hb: HeartbeatFrame => // pass

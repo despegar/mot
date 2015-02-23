@@ -5,22 +5,44 @@ import java.util.concurrent.locks.ReentrantLock
 import scala.collection.JavaConversions._
 import java.util.concurrent.atomic.AtomicInteger
 import scala.IndexedSeq
-import mot.util.Pollable
 import java.util.concurrent.ConcurrentHashMap
-import mot.util.Offerable
 
-class LinkedBlockingMultiQueue[A, E >: Null <: AnyRef](val defaultCapacity: Int) extends Pollable[E] {
+/**
+ * An optionally-bounded blocking "multi-queue" based on linked nodes. A multi-queue is actually a set of queues that
+ * are connected at the heads and have independent tails (the head of the queue is that element that has been on the
+ * queue the longest time. The tail of the queue is that element that has been on the queue the shortest time). New
+ * elements are added at the tail of one of the queues, and the queue retrieval operations obtain elements from the
+ * head of some of the queues, according to a policy that is described below.
+ *
+ * This class essentially allows a consumer to efficiently block a single thread on a set of queues, until one becomes
+ * available. The special feature is that individual queues can be enabled or disabled. A disabled queue is not
+ * considered for polling (in the event that all the queue are disabled, any blocking operation would do so trying to
+ * read, as if all the queues were empty). Elements are taken from the set of enabled queues, obeying the established
+ * priority (queues with the same priority are served round robin).
+ *
+ * A disabled queue accepts new elements normally until it reaches the maximum capacity (if any).
+ *
+ * Individual queues can be address, removed, enabled or disabled at any time, without any concurrency restrictions.
+ *
+ * The optional capacity bound constructor argument serves as a way to prevent excessive queue expansion. The capacity,
+ * if unspecified, is equal to Int.MaxVaue. Linked nodes are dynamically created upon each insertion unless this would
+ * bring the queue above capacity.
+ *
+ * Not being actually a linear queue, this class does not implement the {@code Collection} or {@code Queue} interfaces.
+ * The traditional queue interface is split in the traits: {@code Offerable} and {@code Pollable}.
+ */
+class LinkedBlockingMultiQueue[A, E >: Null](val defaultCapacity: Int = Int.MaxValue) extends Pollable[E] {
 
   import LinkedBlockingMultiQueue.Node
 
   private val takeLock = new ReentrantLock
   private val notEmpty = takeLock.newCondition
 
-  val childrenMap = new ConcurrentHashMap[A, QueuePart[E]]()
+  private val childrenMap = new ConcurrentHashMap[A, SubQueue]()
 
-  var priorityGroups = IndexedSeq[PriorityGroup]()
+  private var priorityGroups = IndexedSeq[PriorityGroup]()
 
-  def children() = childrenMap.toMap
+  def subQueues() = childrenMap.toMap
 
   def totalSize() = childrenMap.values.foldLeft(0)(_ + _.size)
 
@@ -31,44 +53,51 @@ class LinkedBlockingMultiQueue[A, E >: Null <: AnyRef](val defaultCapacity: Int)
     groups.toIndexedSeq
   }
 
-  class PriorityGroup(val children: IndexedSeq[QueuePart[E]]) {
+  private class PriorityGroup(val queues: IndexedSeq[SubQueue]) {
 
-    var nextIdx = 0
+    private var nextIdx = 0
 
-    def dequeue(): (QueuePart[E], E) = {
+    /*
+     * Called inside takeLock
+     */
+    def dequeue(): (SubQueue, E) = {
       // Reset in case of child removal
-      if (nextIdx == children.size)
+      if (nextIdx == queues.size)
         nextIdx = 0
       val startIdx = nextIdx
       do {
-        val child = children(nextIdx)
+        val child = queues(nextIdx)
         nextIdx += 1
-        if (nextIdx == children.size)
+        if (nextIdx == queues.size)
           nextIdx = 0
-        if (child.active && child.size > 0)
+        if (child.enabled && child.size > 0)
           return (child, child.dequeue())
       } while (nextIdx != startIdx)
       null
     }
 
     def isEmpty(): Boolean = {
-      // Use old-school while loops to avoid returning inside closures, which uses exceptions and is slow
+      // Use old-school while loops to avoid returning inside closures, which uses exceptions and can be slow
       var i = 0
-      while (i < children.size) {
-        if (!children(i).isEmpty)
+      while (i < queues.size) {
+        if (!queues(i).isEmpty)
           return false
         i += 1
       }
       true
     }
 
-    def totalSize() = children.map(_.size).sum
+    def totalSize(): Int = queues.map(_.size).sum
 
   }
 
-  // Lower number means higher priority
-  def addChild(key: A, capacity: Int = defaultCapacity, priority: Int = 100) = {
-    val part = new QueuePart[E](capacity, priority)
+  /**
+   * Add a sub queue.
+   *
+   * @param priority the queue priority, a lower number means higher priority
+   */
+  def addSubQueue(key: A, capacity: Int = defaultCapacity, priority: Int = 100) = {
+    val part = new SubQueue(capacity, priority)
     takeLock.lock()
     try {
       if (childrenMap.contains(key))
@@ -81,7 +110,7 @@ class LinkedBlockingMultiQueue[A, E >: Null <: AnyRef](val defaultCapacity: Int)
     part
   }
 
-  def removeChild(key: A) {
+  def removeSubQueue(key: A): Unit = {
     takeLock.lock()
     try {
       childrenMap.remove(key)
@@ -94,7 +123,7 @@ class LinkedBlockingMultiQueue[A, E >: Null <: AnyRef](val defaultCapacity: Int)
   def isEmpty(): Boolean = {
     takeLock.lock()
     try {
-      // Use old-school while loops to avoid returning inside closures, which uses exceptions and is slow
+      // Use an old-school while loop to avoid returning inside closures, which uses exceptions and can be slow
       var i = 0
       while (i < priorityGroups.size) {
         if (!priorityGroups(i).isEmpty)
@@ -107,9 +136,9 @@ class LinkedBlockingMultiQueue[A, E >: Null <: AnyRef](val defaultCapacity: Int)
     }
   }
 
-  def getChild(key: A) = Option(childrenMap.get(key))
-  
-  def getOrCreateChild(key: A): (QueuePart[E], Boolean) = {
+  def getSubQueue(key: A) = Option(childrenMap.get(key))
+
+  def getOrCreateSubQueue(key: A): (SubQueue, Boolean) = {
     val existent = childrenMap.get(key)
     if (existent != null) {
       (existent, false)
@@ -118,7 +147,7 @@ class LinkedBlockingMultiQueue[A, E >: Null <: AnyRef](val defaultCapacity: Int)
       try {
         val existent = childrenMap.get(key)
         if (existent == null)
-          (addChild(key), true)
+          (addSubQueue(key), true)
         else
           (existent, false)
       } finally {
@@ -130,7 +159,7 @@ class LinkedBlockingMultiQueue[A, E >: Null <: AnyRef](val defaultCapacity: Int)
   /**
    * Signals a waiting take. Called only from put/offer (which do not otherwise ordinarily lock takeLock.)
    */
-  def signalNotEmpty() {
+  private def signalNotEmpty(): Unit = {
     takeLock.lock()
     try {
       notEmpty.signal()
@@ -142,42 +171,56 @@ class LinkedBlockingMultiQueue[A, E >: Null <: AnyRef](val defaultCapacity: Int)
   def poll(timeout: Long, unit: TimeUnit): E = {
     var remaining = unit.toNanos(timeout)
     takeLock.lockInterruptibly()
-    val (q, c, x) = try {
+    val (subQueue, oldSize, elem) = try {
       while (!anyQueueHasAnything()) {
         if (remaining <= 0)
           return null
         remaining = notEmpty.awaitNanos(remaining)
       }
-      var dequed: (QueuePart[E], E) = null
-      var i = 0
-      // ordered iteration, begin with lower index (highest priority)
-      while (i < priorityGroups.size && dequed == null) {
-        dequed = priorityGroups(i).dequeue()
-        i += 1
-      }
-      assert(dequed != null)
-      val (q, x) = dequed
-      val c = q.count.getAndDecrement()
-      if (c > 1)
+      // at this point we know there is an element
+      val (subQueue, elem) = deque()
+      val oldSize = subQueue.count.getAndDecrement()
+      if (oldSize > 1) {
+        // subqueue has already elements, notify next poller
         notEmpty.signal()
-      (q, c, x)
+      }
+      (subQueue, oldSize, elem)
     } finally {
       takeLock.unlock()
     }
-    if (c == q.capacity)
-      q.signalNotFull()
-    x
+    if (oldSize == subQueue.capacity) {
+      // we just took an element from a full queue, notify any blocked offers
+      subQueue.signalNotFull()
+    }
+    elem
   }
 
+  /*
+   * (Must be called inside takeLock)
+   */
+  private def deque() = {
+    var dequed: (SubQueue, E) = null
+    // ordered iteration, begin with lower index (highest priority)
+    var i = 0
+    while (i < priorityGroups.size && dequed == null) {
+      dequed = priorityGroups(i).dequeue()
+      i += 1
+    }
+    dequed
+  }
+
+  /*
+   * (Must be called inside takeLock)
+   */
   private def anyQueueHasAnything(): Boolean = {
     // Use old-school while loops to avoid returning inside closures, which uses exceptions and is slow
     var i = 0
     while (i < priorityGroups.size) {
       val pg = priorityGroups(i)
       var j = 0
-      while (j < pg.children.size) {
-        val child = pg.children(j)
-        if (child.active && child.size > 0)
+      while (j < pg.queues.size) {
+        val child = pg.queues(j)
+        if (child.enabled && child.size > 0)
           return true
         j += 1
       }
@@ -186,7 +229,7 @@ class LinkedBlockingMultiQueue[A, E >: Null <: AnyRef](val defaultCapacity: Int)
     false
   }
 
-  class QueuePart[E >: Null <: AnyRef](val capacity: Int, val priority: Int) extends Offerable[E] {
+  class SubQueue(val capacity: Int, val priority: Int) extends Offerable[E] {
 
     if (capacity <= 0)
       throw new IllegalArgumentException
@@ -196,39 +239,41 @@ class LinkedBlockingMultiQueue[A, E >: Null <: AnyRef](val defaultCapacity: Int)
 
     private[LinkedBlockingMultiQueue] val count = new AtomicInteger
 
-    private[LinkedBlockingMultiQueue] var active = true
+    private[LinkedBlockingMultiQueue] var enabled = true
 
     /**
      * Head of linked list. Invariant: head.item == null
      */
-    private[LinkedBlockingMultiQueue] var head = new Node[E](null)
+    private var head = new Node[E](null)
 
     /**
      * Tail of linked list. Invariant: last.next == null
      */
     private var last = head
 
-    def enable(status: Boolean) {
+    def enable(status: Boolean): Unit = {
       takeLock.lock()
       try {
-        active = status
-        if (status)
+        enabled = status
+        if (status) {
+          // potentially unblock waiting polls
           notEmpty.signal()
+        }
       } finally {
         takeLock.unlock()
       }
     }
 
-    def isEnabled() = {
+    def isEnabled(): Boolean = {
       takeLock.lock()
       try {
-        active
+        enabled
       } finally {
         takeLock.unlock()
       }
     }
 
-    private[LinkedBlockingMultiQueue] def signalNotFull() {
+    private[LinkedBlockingMultiQueue] def signalNotFull(): Unit = {
       putLock.lock()
       try {
         notFull.signal()
@@ -237,37 +282,23 @@ class LinkedBlockingMultiQueue[A, E >: Null <: AnyRef](val defaultCapacity: Int)
       }
     }
 
-    /**
-     * Links node at end of queue.
-     * @param node the node
-     */
-    private def enqueue(node: Node[E]) {
+    private def enqueue(node: Node[E]): Unit = {
       last.next = node
       last = node
     }
 
     /**
-     * Returns the number of elements in this queue.
-     * @return the number of elements in this queue
+     * Return the number of elements in this queue.
      */
     def size() = count.get()
 
     def isEmpty() = size == 0
 
-    /**
-     * Inserts the specified element at the tail of this queue, waiting if
-     * necessary up to the specified wait time for space to become available.
-     *
-     * @return {@code true} if successful, or {@code false} if the specified waiting time elapses before space is
-     *   available.
-     * @throws InterruptedException {@inheritDoc}
-     * @throws NullPointerException {@inheritDoc}
-     */
     def offer(e: E, timeout: Long, unit: TimeUnit): Boolean = {
       if (e == null)
-        throw new NullPointerException()
+        throw new NullPointerException
       var nanos = unit.toNanos(timeout)
-      var c = -1
+      var oldSize = -1
       putLock.lockInterruptibly()
       try {
         while (count.get() == capacity) {
@@ -276,21 +307,26 @@ class LinkedBlockingMultiQueue[A, E >: Null <: AnyRef](val defaultCapacity: Int)
           nanos = notFull.awaitNanos(nanos)
         }
         enqueue(new Node[E](e))
-        c = count.getAndIncrement()
-        if (c + 1 < capacity)
+        oldSize = count.getAndIncrement()
+        if (oldSize + 1 < capacity) {
+          // queue not full after adding, notify next offerer
           notFull.signal()
+        }
       } finally {
         putLock.unlock()
       }
-      if (c == 0)
+      if (oldSize == 0) {
+        // just added an element to an empty queue, notify pollers
         signalNotEmpty()
+      }
       true
     }
 
     def offer(e: E): Boolean = offer(e, 0, TimeUnit.NANOSECONDS)
-    
+
     /**
      * Removes a node from head of queue.
+     * (Must be called inside takeLock)
      * @return the node
      */
     private[LinkedBlockingMultiQueue] def dequeue(): E = {
@@ -310,7 +346,7 @@ class LinkedBlockingMultiQueue[A, E >: Null <: AnyRef](val defaultCapacity: Int)
 
 object LinkedBlockingMultiQueue {
 
-  class Node[E >: Null <: AnyRef](var item: E) {
+  class Node[E >: Null](var item: E) {
     /**
      * One of:
      * - the real successor Node

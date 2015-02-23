@@ -4,7 +4,6 @@ import java.net.Socket
 import scala.util.control.NonFatal
 import java.net.InetSocketAddress
 import java.util.concurrent.atomic.AtomicBoolean
-import java.util.concurrent.LinkedBlockingQueue
 import java.io.IOException
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.TimeUnit
@@ -40,8 +39,8 @@ class ClientConnector(val client: Client, val target: Address) extends StrictLog
 
   val sendingQueue = new LinkedBlockingMultiQueue[String, OutgoingEvent](client.sendingQueueSize)
 
-  val messagesQueue = sendingQueue.addChild("messages", priority = 100)
-  val flowControlQueue = sendingQueue.addChild("flowNotifications", capacity = 5, priority = 10)
+  val messagesQueue = sendingQueue.addSubQueue("messages", priority = 100)
+  val flowControlQueue = sendingQueue.addSubQueue("flowNotifications", capacity = 5, priority = 10)
 
   val writerThread = new Thread(connectLoop _, s"mot(${client.name})-writer-for-$target")
 

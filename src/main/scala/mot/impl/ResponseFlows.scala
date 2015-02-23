@@ -16,7 +16,7 @@ class ResponseFlows(connection: ServerConnection) extends StrictLogging {
   def totalSize() = multiQueue.totalSize
 
   def getOrCreateFlow(flowId: Int): ResponseFlow = synchronized {
-    val (subQueue, created) = multiQueue.getOrCreateChild(flowId)
+    val (subQueue, created) = multiQueue.getOrCreateSubQueue(flowId)
     if (created) {
       val newFlow = new ResponseFlow(connection, flowId, subQueue)
       flows.put(flowId, newFlow)
@@ -45,7 +45,7 @@ class ResponseFlows(connection: ServerConnection) extends StrictLogging {
         logger.debug(s"Expiring flow ${flow.id} after ${ResponseFlows.flowGc} of inactivity")
         // order is important
         it.remove()
-        multiQueue.removeChild(flow.id)
+        multiQueue.removeSubQueue(flow.id)
       }
     }
   }
