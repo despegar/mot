@@ -1,7 +1,17 @@
-organization := "mot"
+organization := "com.github.marianobarrios"
 name := "mot"
-
 version := "0.8-SNAPSHOT"
+description := "Message-Oriented Transport"
+homepage := Some(url("https://github.com/marianobarrios/mot"))
+licenses := Seq("BSD-style" -> url("http://www.opensource.org/licenses/bsd-license.php"))
+	
+publishTo := {
+  val nexus = "https://oss.sonatype.org/"
+  if (isSnapshot.value)
+    Some("snapshots" at nexus + "content/repositories/snapshots")
+  else
+    Some("releases" at nexus + "service/local/staging/deploy/maven2")
+}
 
 scalaVersion := "2.11.5"
 crossScalaVersions := Seq("2.10.4", "2.11.5")
@@ -17,14 +27,8 @@ scalacOptions := Seq(
 	"-Ywarn-dead-code",
 	"-Ywarn-inaccessible",
 	"-Ywarn-nullary-unit",
-	"-Ywarn-nullary-override",
-	"-Ywarn-infer-any")
+	"-Ywarn-nullary-override")
 	
-//publishTo := Some("bsas-snapshots" at "http://nexus.despegar.it:8080/nexus/content/repositories/snapshots/")
-//publishTo := Some("bsas-releases" at "http://nexus.despegar.it:8080/nexus/content/repositories/releases/")
-//publishTo := Some("miami-releases" at "http://nexus:8080/nexus/content/repositories/releases-miami/")
-//publishTo := Some("miami-snapshots" at "http://nexus:8080/nexus/content/repositories/snapshots-miami/")
-
 libraryDependencies ++=
   "com.typesafe.scala-logging" %% "scala-logging-slf4j" % "2.1.2" ::
   "ch.qos.logback" % "logback-classic" % "1.1.2" % Test ::
@@ -50,3 +54,18 @@ fork := true
 connectInput := true
 outputStrategy := Some(StdoutOutput)
 javaOptions  ++= Seq("-Xmx6200m", "-Xms6200m", "-XX:NewSize=5000m")
+
+publishMavenStyle := true
+
+pomExtra := (
+  <scm>
+    <url>git@github.com:marianobarrios/mot.git</url>
+    <connection>scm:git:git@github.com:marianobarrios/mot.git</connection>
+    <developerConnection>scm:git:git@github.com:marianobarrios/mot.git</developerConnection>
+  </scm>
+  <developers>
+    <developer>
+      <name>Mariano Barrios</name>
+      <url>https://github.com/marianobarrios/</url>
+    </developer>
+  </developers>)
