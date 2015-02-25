@@ -9,7 +9,6 @@ import java.net.SocketException
 import java.io.PrintStream
 import java.net.Socket
 import mot.Context
-import scala.collection.immutable
 import com.typesafe.scalalogging.slf4j.StrictLogging
 import java.nio.charset.StandardCharsets
 import mot.util.Util
@@ -51,12 +50,12 @@ class Commands(context: Context, monitoringPort: Int) extends StrictLogging with
     val os = socket.getOutputStream
     try {
       val req = Source.fromInputStream(is).mkString("")
-      val reqParts = if (req.isEmpty) immutable.Seq() else req.split(" ").to[immutable.Seq]
+      val reqParts = if (req.isEmpty) Seq() else req.split(" ").toSeq
       def writer(part: String): Unit = {
         os.write(part.getBytes(StandardCharsets.UTF_8))
         os.write('\n')
       }
-      val res = handle(immutable.Seq(name), reqParts, writer)
+      val res = handle(Seq(name), reqParts, writer _)
       writer(res)
     } catch {
       case e: SocketException =>
@@ -79,7 +78,7 @@ class Commands(context: Context, monitoringPort: Int) extends StrictLogging with
 
   val name = "cnd"
 
-  val subcommands = immutable.Seq(
+  val subcommands = Seq(
     new Clients(context),
     new ClientConnectors(context),
     new ClientConnector(context),

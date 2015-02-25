@@ -15,11 +15,11 @@ import mot.util.UnaryPromise
 import mot.protocol.MessageFrame
 import mot.Message
 import mot.MessageTooLargeException
-import mot.InvalidClientConnectionException
 import mot.protocol.FlowControlFrame
 import mot.dump.TcpEvent
 import mot.dump.Direction
 import mot.dump.Operation
+import mot.InvalidConnectionException
 
 class ClientConnection(val connector: ClientConnector, socketImpl: Socket)
   extends AbstractConnection(connector.client, socketImpl) {
@@ -44,7 +44,7 @@ class ClientConnection(val connector: ClientConnector, socketImpl: Socket)
   def reportClose(cause: Throwable): Unit = {
     logger.debug("Forgetting all promises of client connection: " + socket.impl.getLocalSocketAddress)
     for (pendingResponse <- connector.pendingResponses.values) {
-      pendingResponse.error(this, new InvalidClientConnectionException(cause))
+      pendingResponse.error(this, new InvalidConnectionException(cause))
     }
   }
 
@@ -67,7 +67,7 @@ class ClientConnection(val connector: ClientConnector, socketImpl: Socket)
       }
   }
 
-  def localHello = ClientHello(protocolVersion = 1, localName, party.maxAcceptedLength)
+  def localHello = ClientHello(protocolVersion = 1, localName, party.maxLength)
 
   def outgoingQueue = connector.sendingQueue
 

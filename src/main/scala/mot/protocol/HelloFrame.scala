@@ -7,8 +7,9 @@ import scala.collection.mutable.HashMap
 import mot.util.ByteArray
 
 /**
- * First frame send by both parties in every connection. 
+ * First frame send by both parties in the beginning of every connection. 
  * 
+ * <pre>
  *  0                   1                   2                   3   
  *  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
  * ╭───────────────────────────────────────────────────────────────╮
@@ -20,6 +21,7 @@ import mot.util.ByteArray
  * ╎              Attributes (see AttributeSupport)                ╎
  * ╎                                                               ╎
  * ╰───────────────────────────────────────────────────────────────╯
+ * </pre>
  */
 case class HelloFrame(val attributes: Seq[(String, ByteArray)]) extends Frame with AttributesSupport {
 

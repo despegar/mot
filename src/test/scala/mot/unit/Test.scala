@@ -48,7 +48,7 @@ class Test extends FunSuite with BeforeAndAfterAll {
       val requestSuccess = client.offerRequest(target, request, timeoutMs, promise)
       assert(requestSuccess)
       val incominResponse = promise.result(pollMs, TimeUnit.MILLISECONDS).get
-      val receivedResponse = incominResponse.result.get
+      val receivedResponse = incominResponse.message.get
       assertResult(response.stringBody)(receivedResponse.stringBody)
     }
     ctx.close()
@@ -84,7 +84,7 @@ class Test extends FunSuite with BeforeAndAfterAll {
     val promise = new UnaryPromise[IncomingResponse]
     val requestSuccess = client.offerRequest(target, request, timeoutMs, promise)
     assert(requestSuccess)
-    val receivedResponse = promise.result(pollMs, TimeUnit.MILLISECONDS).get.result.get
+    val receivedResponse = promise.result(pollMs, TimeUnit.MILLISECONDS).get.message.get
     val sdf = new SimpleDateFormat("HH:mm:ss.SSS'Z'")
     var event = listener.queue.poll()
     client.close()

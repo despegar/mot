@@ -3,14 +3,13 @@ package mot.monitoring
 import mot.util.Tabler
 import mot.Context
 import collection.JavaConversions._
-import scala.collection.immutable
 
 class Servers(context: Context) extends SimpleCommandHandler {
 
   val name = "servers"
   val helpLine = "Print information about listening servers"
 
-  def simpleHandle(processedCommands: immutable.Seq[String], commands: immutable.Seq[String]) = {
+  def simpleHandle(processedCommands: Seq[String], commands: Seq[String]) = {
     import Tabler._
     import Alignment._
     Tabler.draw(
@@ -27,10 +26,10 @@ class Servers(context: Context) extends SimpleCommandHandler {
             server.name,
             server.bindAddress.getHostAddress,
             server.bindPort,
-            server.maxAcceptedLength,
-            server.sendingQueueSize,
-            server.readerBufferSize,
-            server.writerBufferSize,
+            server.maxLength,
+            server.maxQueueSize,
+            server.readBufferSize,
+            server.writeBufferSize,
             server.connections.size)
         }
       }

@@ -9,6 +9,7 @@ import mot.util.ByteArray
  * Frame that is sent in the event of an abnormal connection termination. The body can have a reason. Nothing is sent 
  * or received after this frame.
  * 
+ * <pre>
  *  0                   1                   2                   3   
  *  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
  * ╭───────────────────────────────────────────────────────────────╮
@@ -20,6 +21,7 @@ import mot.util.ByteArray
  * ╎                    Body (see BodySupport)                     ╎
  * ╎                                                               ╎
  * ╰───────────────────────────────────────────────────────────────╯
+ * </pre>
  */
 case class ResetFrame(error: String) extends Frame with BodySupport {
   

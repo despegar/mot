@@ -1,7 +1,6 @@
 package mot.monitoring
 
 import mot.Context
-import scala.collection.immutable
 import mot.util.Tabler
 import mot.util.Tabler.Alignment
 import collection.JavaConversions._
@@ -13,7 +12,7 @@ class ServerFlows(context: Context) extends SimpleCommandHandler {
   val name = "server-flows"
   val helpLine = "Print information about server flows"
 
-  def simpleHandle(processedCommands: immutable.Seq[String], commands: immutable.Seq[String]): String = {
+  def simpleHandle(processedCommands: Seq[String], commands: Seq[String]): String = {
     import Tabler._
     import Alignment._
     Tabler.draw(

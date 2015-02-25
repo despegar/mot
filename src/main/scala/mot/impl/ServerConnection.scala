@@ -49,9 +49,9 @@ class ServerConnection(val server: Server, socketImpl: Socket) extends AbstractC
 
   logger.info("Accepted connection from " + remoteAddress)
 
-  def flow(flowId: Int) = 
+  def flow(flowId: Int) =
     responseFlows.flow(flowId).getOrElse(throw new IllegalStateException("inexistent flow"))
-    
+
   def start(): Unit = {
     party.context.dumper.dump(TcpEvent(this, Direction.Incoming, Operation.Creation))
     server.connections.put(remoteAddress, this)
@@ -73,7 +73,7 @@ class ServerConnection(val server: Server, socketImpl: Socket) extends AbstractC
     flow.queue.offer(outgoingResponse, wait, timeUnit)
   }
 
-  def localHello = ServerHello(protocolVersion = 1, localName, party.maxAcceptedLength)
+  def localHello = ServerHello(protocolVersion = 1, localName, party.maxLength)
 
   def outgoingQueue = responseFlows.multiQueue
 
@@ -113,19 +113,19 @@ class ServerConnection(val server: Server, socketImpl: Socket) extends AbstractC
     val hello = helloPromise.result
     handle(IncomingMessage(responder, remoteAddress, localAddress, hello.sender, hello.maxLength, message))
   }
-  
-   private def handle(incoming: IncomingMessage): Unit = {
-     try {
-       server.executor.execute(() => server.handler(incoming))
-     } catch {
-       case e: RejectedExecutionException => 
-         // This exception can be thrown in the case of executor shutdown or if the executor is overload and the
-         // rejection policy throws (AbortPolicy does that).
-         logger.debug("Incoming mesage task rejected.")
-       case e: Throwable => 
-         // Be defensive
-         logger.warn("Caught exception submiting tasks for incoming message", e)
-     }
-   }
-   
+
+  private def handle(incoming: IncomingMessage): Unit = {
+    try {
+      server.executor.execute(() => server.handler(incoming))
+    } catch {
+      case e: RejectedExecutionException =>
+        // This exception can be thrown in the case of executor shutdown or if the executor is overload and the
+        // rejection policy throws (AbortPolicy does that).
+        logger.debug("Incoming mesage task rejected.")
+      case e: Throwable =>
+        // Be defensive
+        logger.warn("Caught exception submiting tasks for incoming message", e)
+    }
+  }
+
 }

@@ -17,7 +17,7 @@ import mot.ClientFlow
 import mot.IncomingResponse
 import scala.collection.JavaConversions._
 import mot.ServerConnectionHandler
-import mot.InvalidServerConnectionException
+import mot.InvalidConnectionException
 import mot.util.Util.FunctionToRunnable
 import scala.util.control.NonFatal
 import javax.xml.ws.Response
@@ -59,9 +59,9 @@ class Proxy(val context: Context) extends StrictLogging {
     frontendExecutor,
     requestHandler,
     6000,
-    sendingQueueSize = 100000,
-    readerBufferSize = 200000,
-    writerBufferSize = 200000)
+    maxQueueSize = 100000,
+    readBufferSize = 200000,
+    writeBufferSize = 200000)
 
   val backendExecutor = new ThreadPoolExecutor(
     1, 1, Long.MaxValue, TimeUnit.MILLISECONDS, new LinkedBlockingQueue[Runnable](10000), new ThreadPoolExecutor.CallerRunsPolicy)
@@ -69,9 +69,9 @@ class Proxy(val context: Context) extends StrictLogging {
   val backend = new Client(
     context,
     name,
-    sendingQueueSize = 100000,
-    readerBufferSize = 200000,
-    writerBufferSize = 200000)
+    maxQueueSize = 100000,
+    readBufferSize = 200000,
+    writeBufferSize = 200000)
 
   val responseQueue = new LinkedBlockingQueue[(IncomingResponse, Responder)](100000)
   val backendFlows = new ConcurrentHashMap[Address, ClientFlow]()
@@ -161,7 +161,7 @@ class Proxy(val context: Context) extends StrictLogging {
   val attr503 = Map("status" -> ByteArray(503.toString.getBytes))
 
   def responseHandler(responder: Responder)(incomingResponse: IncomingResponse): Unit = try {
-    val responseSuccess = incomingResponse.result match {
+    val responseSuccess = incomingResponse.message match {
       case Success(msg) => responder.offer(msg)
       case Failure(exception) => responder.offer(Message.fromString(attr503, exception.getMessage))
     }
@@ -176,7 +176,7 @@ class Proxy(val context: Context) extends StrictLogging {
       }
     } catch {
       case e: IllegalStateException => // flow expired
-      case e: InvalidServerConnectionException => // connection expired
+      case e: InvalidConnectionException => // connection expired
     }
   } catch {
     case NonFatal(e) =>
@@ -207,7 +207,7 @@ class Proxy(val context: Context) extends StrictLogging {
           }
         } catch {
           case e: IllegalStateException => it.remove() // flow expired
-          case e: InvalidServerConnectionException => it.remove() // connection expired
+          case e: InvalidConnectionException => it.remove() // connection expired
         }
       }
       Thread.sleep(200)

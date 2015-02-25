@@ -1,4 +1,4 @@
-package mot.monitoring
+package mot.util
 
 class Differ(val counter: () => Long) {
 

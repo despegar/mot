@@ -7,9 +7,9 @@ object TestMultiQueue {
 
   def main(args: Array[String]) {
     val queue = new LinkedBlockingMultiQueue[Int, String](100)
-    val p1 = queue.addChild(1, priority = 1)
-    val p2 = queue.addChild(2, priority = 1)
-    val p3 = queue.addChild(3, priority = 0)
+    val p1 = queue.addSubQueue(1, priority = 1)
+    val p2 = queue.addSubQueue(2, priority = 1)
+    val p3 = queue.addSubQueue(3, priority = 0)
     def producer1() {
       while (true) {
         p1.offer("1", 500, TimeUnit.SECONDS)

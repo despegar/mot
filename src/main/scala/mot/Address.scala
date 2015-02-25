@@ -2,6 +2,15 @@ package mot
 
 import java.net.InetSocketAddress
 
+/**
+ * Destination for messages.
+ * 
+ * @param host 
+ *   Host to connect to. Can be an IP address or a domain name. In the latter case, all records are tried sequentially
+ *   in case of error.
+ * @param port 
+ *   TCP port to connect to.
+ */
 case class Address(host: String, port: Int) {
   override def toString() = s"$host:$port"
 }

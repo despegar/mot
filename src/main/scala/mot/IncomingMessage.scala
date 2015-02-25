@@ -8,5 +8,5 @@ case class IncomingMessage private[mot] (
     maxResponseLength: Int, 
     message: Message) {
   def isRespondable(): Boolean = responderOption.isDefined
-  def responder(): Responder = responderOption.getOrElse(throw new MessageNotRespondableException)
+  def responder(): Responder = responderOption.getOrElse(throw new NotRespondableException)
 }

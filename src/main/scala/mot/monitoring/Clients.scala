@@ -3,17 +3,14 @@ package mot.monitoring
 import mot.util.Tabler
 import mot.Context
 import collection.JavaConversions._
-import scala.collection.immutable
-import scala.concurrent.duration.FiniteDuration
-import scala.concurrent.duration.Duration
-import scala.concurrent.duration.Duration.Infinite
+import mot.util.Util
 
 class Clients(context: Context) extends SimpleCommandHandler {
 
   val name = "clients"
   val helpLine = "Print information about clients"
 
-  def simpleHandle(processedCommands: immutable.Seq[String], commands: immutable.Seq[String]) = {
+  def simpleHandle(processedCommands: Seq[String], commands: Seq[String]) = {
     import Tabler._
     import Alignment._
     Tabler.draw(
@@ -27,19 +24,14 @@ class Clients(context: Context) extends SimpleCommandHandler {
         for (client <- context.clients.values) {
           printer(
             client.name,
-            client.maxAcceptedLength,
-            client.sendingQueueSize,
-            client.readerBufferSize,
-            client.writerBufferSize,
-            durationToString(client.tolerance), 
+            client.maxLength,
+            client.maxQueueSize,
+            client.readBufferSize,
+            client.writeBufferSize,
+            Util.durationToString(client.tolerance), 
             client.connectors.size)
         }
       }
-  }
-  
-  private def durationToString(duration: Duration) = duration match {
-    case fd: FiniteDuration => fd.toString
-    case id: Infinite => "∞"
   }
 
 }

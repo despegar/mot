@@ -15,7 +15,6 @@ trait Pollable[+T] {
    * @param unit a <tt>TimeUnit</tt> determining how to interpret the <tt>timeout</tt> parameter
    * @return the head of this queue, or <tt>null</tt> if the specified waiting time elapses before an element is 
    *     available
-   * @throws InterruptedException if interrupted while waiting
    */
   def poll(timeout: Long, TimeUnit: TimeUnit): T
 

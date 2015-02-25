@@ -29,9 +29,9 @@ object TestLatency extends TestClient {
     val client = new Client(
       ctx,
       "test-client",
-      sendingQueueSize = 200000,
-      readerBufferSize = 200000,
-      writerBufferSize = 200000)
+      maxQueueSize = 200000,
+      readBufferSize = 200000,
+      writeBufferSize = 200000)
     val body = "hola, la concha de tu madre"
     val (realTarget, message) = proxyOpt match {
       case Some(proxy) => (proxy, Message.fromString(Map("Proxy" -> ByteArray(target.toString.getBytes)), body))

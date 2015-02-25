@@ -16,8 +16,6 @@ trait Offerable[-T] {
    * @param unit a <tt>TimeUnit</tt> determining how to interpret the <tt>timeout</tt> parameter
    * @return <tt>true</tt> if successful, or <tt>false</tt> if the specified waiting time elapses before space is 
    *     available
-   * @throws InterruptedException if interrupted while waiting
-   * @throws NullPointerException if the specified element is null
    */
   def offer(e: T, timeout: Long, TimeUnit: TimeUnit): Boolean
 
@@ -27,7 +25,6 @@ trait Offerable[-T] {
    *
    * @param e the element to add
    * @return <tt>true</tt> if the element was added to this queue, else <tt>false</tt>
-   * @throws NullPointerException if the specified element is null
    */
   def offer(e: T): Boolean
 

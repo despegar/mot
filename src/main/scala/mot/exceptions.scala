@@ -20,21 +20,16 @@ class GreetingAbortedException extends Exception
 
 class LocalClosedException extends Exception("connector closed locally")
 
+class InvalidConnectionException(cause: Throwable) extends Exception("the connection was terminated", cause)
+
 // Client
 
-class ResponseTimeoutException extends Exception("Response timed out.") with NoStackTraceException
+class ResponseTimeoutException extends Exception("Response timed out") with NoStackTraceException
 
 class ErrorStateException(cause: Throwable) 
-  extends Exception("cannot send message because the connector is in error state and the client is configured as pessimistic", cause)
-
-class InvalidClientConnectionException(cause: Throwable) 
-  extends Exception("cannot get response because the connection was terminated", cause)
-
-// Server
+  extends Exception(
+      "cannot send message because the connector is in error state and the client is configured as pessimistic", cause)
 
 class ResponseAlreadySendException extends Exception("message has already been responded")
 
-class InvalidServerConnectionException(cause: Throwable)
-  extends Exception("cannot send response because server the connection from which the request came was terminated", cause)
-
-class MessageNotRespondableException extends Exception("message cannot be responded")
+class NotRespondableException extends Exception("message cannot be responded")

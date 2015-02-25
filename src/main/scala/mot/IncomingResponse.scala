@@ -2,8 +2,8 @@ package mot
 
 import scala.util.Try
 
-case class IncomingResponse(
+case class IncomingResponse private[mot] (
     remoteAddress: Address, 
     localAddress: Option[Address], 
-    result: Try[Message], 
+    message: Try[Message], 
     clientFlow: ClientFlow)

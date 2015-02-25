@@ -28,6 +28,8 @@ import com.typesafe.scalalogging.slf4j.StrictLogging
  * 
  * It is also worth mentioning that no response is stopped half-sent: Mot is a small-message protocol and each message 
  * (that cannot use more than one frame) is always sent entirely o not at all.
+ *
+ * @see [[mot.protocol.FlowControlFrame]]  
  */
 class ClientFlow private[mot](val id: Int, val client: Client) extends StrictLogging {
 
@@ -35,7 +37,18 @@ class ClientFlow private[mot](val id: Int, val client: Client) extends StrictLog
 
   @volatile private var _lastUse = -1L
   
+  /**
+   * Close the flow. A frame is set telling the server in the other side to stop sending responses to the messages 
+   * associated with this flow.
+   * @return {@code true} if the command succeeded (because the flow was open). 
+   */
   def closeFlow() = updateFlow(false)
+  
+  /**
+   * Open the flow. A frame is set telling the server in the other side to start sending responses to the messages 
+   * associated with this flow again.
+   * @return {@code true} if the command succeeded (because the flow was closed). 
+   */
   def openFlow() = updateFlow(true)
   
   private def updateFlow(newStatus: Boolean): Boolean = {
@@ -53,13 +66,16 @@ class ClientFlow private[mot](val id: Int, val client: Client) extends StrictLog
     success
   }
 
+  /**
+   * Return whether this flow is open.
+   */
   def isOpen() = status.get
 
-  def markUse(): Unit = {
+  private[mot] def markUse(): Unit = {
     _lastUse = System.nanoTime()
   }
   
-  def lastUse() = _lastUse
+  private[mot] def lastUse() = _lastUse
   
   override def toString() = s"ClientFlow(id=$id,client=$client)"
 

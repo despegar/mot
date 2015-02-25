@@ -3,7 +3,6 @@ package mot.monitoring
 import mot.util.Tabler
 import mot.Context
 import collection.JavaConversions._
-import scala.collection.immutable
 import java.util.concurrent.TimeUnit
 import scala.util.Success
 import scala.util.Failure
@@ -13,7 +12,7 @@ class ClientConnectors(context: Context) extends SimpleCommandHandler {
   val name = "client-connectors"
   val helpLine = "Print information about client connectors"
 
-  def simpleHandle(processedCommands: immutable.Seq[String], commands: immutable.Seq[String]) = {
+  def simpleHandle(processedCommands: Seq[String], commands: Seq[String]) = {
     import Tabler._
     import Alignment._
     Tabler.draw(

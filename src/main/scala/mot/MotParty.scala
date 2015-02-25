@@ -3,7 +3,7 @@ package mot
 trait MotParty {
   def name: String
   def context: Context
-  def readerBufferSize: Int
-  def writerBufferSize: Int
-  def maxAcceptedLength: Int
+  def readBufferSize: Int
+  def writeBufferSize: Int
+  def maxLength: Int
 }

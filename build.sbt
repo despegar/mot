@@ -1,10 +1,10 @@
 organization := "mot"
-
 name := "mot"
 
 version := "0.8-SNAPSHOT"
 
 scalaVersion := "2.11.5"
+crossScalaVersions := Seq("2.10.4", "2.11.5")
 
 scalacOptions := Seq(
 	"-feature", 
@@ -20,8 +20,6 @@ scalacOptions := Seq(
 	"-Ywarn-nullary-override",
 	"-Ywarn-infer-any")
 	
-crossScalaVersions := Seq("2.10.4", "2.11.5")
-
 //publishTo := Some("bsas-snapshots" at "http://nexus.despegar.it:8080/nexus/content/repositories/snapshots/")
 //publishTo := Some("bsas-releases" at "http://nexus.despegar.it:8080/nexus/content/repositories/releases/")
 //publishTo := Some("miami-releases" at "http://nexus:8080/nexus/content/repositories/releases-miami/")
@@ -49,9 +47,6 @@ unmanagedSourceDirectories in Compile := (scalaSource in Compile).value :: Nil
 unmanagedSourceDirectories in Test := (scalaSource in Test).value :: Nil
   
 fork := true
-	
 connectInput := true
-
-javaOptions  ++= Seq("-Xmx6200m", "-Xms6200m", "-XX:NewSize=5000m")
-
 outputStrategy := Some(StdoutOutput)
+javaOptions  ++= Seq("-Xmx6200m", "-Xms6200m", "-XX:NewSize=5000m")

@@ -4,7 +4,7 @@ import java.util.concurrent.TimeUnit
 import mot.impl.ServerConnection
 import mot.impl.OutgoingResponse
 
-class ServerConnectionHandler(conn: ServerConnection) {
+class ServerConnectionHandler private[mot] (conn: ServerConnection) {
 
   @volatile private var _connection: Option[ServerConnection] = Some(conn)
   @volatile private var _exception: Option[Throwable] = None
@@ -17,7 +17,7 @@ class ServerConnectionHandler(conn: ServerConnection) {
 
   def isValid() = _connection.isDefined
   
-  private def connection() = _connection.getOrElse(throw new InvalidServerConnectionException(_exception.get))
+  private def connection() = _connection.getOrElse(throw new InvalidConnectionException(_exception.get))
 
   def offerResponse(serverFlowId: Int, requestId: Int, message: Message, wait: Long, timeUnit: TimeUnit): Boolean =
     connection().offerResponse(serverFlowId, OutgoingResponse(requestId, message), wait, timeUnit)

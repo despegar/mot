@@ -1,6 +1,5 @@
 package mot.impl
 
-import java.net.InetSocketAddress
 import java.net.Socket
 import mot.Address
 

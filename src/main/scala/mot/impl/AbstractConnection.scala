@@ -1,38 +1,38 @@
 package mot.impl
 
+import java.io.IOException
 import java.net.Socket
-import mot.util.RichSocket
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicReference
+
+import scala.concurrent.duration.Duration
+import scala.util.control.NonFatal
+
+import com.typesafe.scalalogging.slf4j.StrictLogging
+
+import mot.ByeException
+import mot.CounterpartyClosedException
+import mot.GreetingAbortedException
+import mot.LocalClosedException
+import mot.MotParty
+import mot.ResetException
 import mot.buffer.ReadBuffer
 import mot.buffer.WriteBuffer
-import mot.dump.Dumper
-import mot.protocol.Frame
-import mot.dump.MotEvent
 import mot.dump.Direction
-import mot.LocalClosedException
-import mot.protocol.HeartbeatFrame
-import com.typesafe.scalalogging.slf4j.StrictLogging
-import java.io.EOFException
-import java.io.IOException
+import mot.dump.MotEvent
 import mot.dump.Operation
 import mot.dump.TcpEvent
-import mot.queue.Pollable
-import mot.protocol.ProtocolSemanticException
-import mot.GreetingAbortedException
 import mot.protocol.ByeFrame
-import mot.protocol.ResetFrame
-import scala.concurrent.duration.Duration
-import java.util.concurrent.TimeUnit
+import mot.protocol.Frame
+import mot.protocol.HeartbeatFrame
 import mot.protocol.HelloFrame
-import mot.Context
-import mot.ResetException
-import mot.CounterpartyClosedException
 import mot.protocol.ProtocolException
-import scala.util.control.NonFatal
+import mot.protocol.ProtocolSemanticException
+import mot.protocol.ResetFrame
 import mot.protocol.UnknownFrame
-import mot.ByeException
-import java.util.concurrent.CountDownLatch
-import mot.MotParty
-import java.util.concurrent.atomic.AtomicReference
+import mot.queue.Pollable
+import mot.util.RichSocket
 
 abstract class AbstractConnection(val party: MotParty, val socketImpl: Socket) extends Connection with StrictLogging {
 
@@ -56,8 +56,8 @@ abstract class AbstractConnection(val party: MotParty, val socketImpl: Socket) e
   def localName = party.name
   def remoteName = remoteNameOption.getOrElse("")
 
-  val readBuffer = new ReadBuffer(socket.impl.getInputStream, party.readerBufferSize)
-  val writeBuffer = new WriteBuffer(socket.impl.getOutputStream, party.writerBufferSize)
+  val readBuffer = new ReadBuffer(socket.impl.getInputStream, party.readBufferSize)
+  val writeBuffer = new WriteBuffer(socket.impl.getOutputStream, party.writeBufferSize)
 
   val exception = new AtomicReference[Throwable]
 
@@ -69,7 +69,7 @@ abstract class AbstractConnection(val party: MotParty, val socketImpl: Socket) e
   def isClosing() = exception.get != null
 
   def readFrame(): Frame = {
-    val msg = Frame.read(readBuffer, party.maxAcceptedLength)
+    val msg = Frame.read(readBuffer, party.maxLength)
     party.context.dumper.dump(MotEvent(this, Direction.Incoming, msg))
     lastReception = System.nanoTime()
     msg

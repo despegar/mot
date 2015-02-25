@@ -5,6 +5,9 @@ import mot.buffer.WriteBuffer
 import mot.util.ByteArray
 
 /**
+ * Frame sent by clients, represents and unrespondible message.
+ * 
+ * <pre>
  *  0                   1                   2                   3   
  *  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
  * ╭───────────────────────────────────────────────────────────────╮
@@ -20,6 +23,7 @@ import mot.util.ByteArray
  * ╎                    Body (see BodySupport)                     ╎
  * ╎                                                               ╎
  * ╰───────────────────────────────────────────────────────────────╯
+ * </pre>
  */
 case class MessageFrame(
     val attributes: Seq[(String, ByteArray)], 

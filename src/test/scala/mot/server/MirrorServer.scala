@@ -28,10 +28,10 @@ object MirrorServer extends StrictLogging {
       executor,
       handleRequest,
       bindPort = 5000,
-      maxAcceptedLength = 1000000000,
-      sendingQueueSize = 200000,
-      readerBufferSize = 200000,
-      writerBufferSize = 200000)
+      maxLength = 1000000000,
+      maxQueueSize = 200000,
+      readBufferSize = 200000,
+      writeBufferSize = 200000)
     Console.println("Press return to exit")
     StdIn.readLine()
     ctx.close()

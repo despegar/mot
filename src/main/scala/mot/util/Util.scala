@@ -8,6 +8,9 @@ import java.util.concurrent.locks.Lock
 import io.netty.util.TimerTask
 import io.netty.util.Timeout
 import java.io.IOException
+import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.duration.Duration
+import scala.concurrent.duration.Duration.Infinite
 
 object Util {
 
@@ -66,4 +69,8 @@ object Util {
     }
   }
   
+  def durationToString(duration: Duration) = duration match {
+    case fd: FiniteDuration => fd.toString
+    case id: Infinite => "∞"
+  }
 }

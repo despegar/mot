@@ -10,7 +10,7 @@ import scala.util.control.NonFatal
 
 class ResponseFlows(connection: ServerConnection) extends StrictLogging {
 
-  val multiQueue = new LinkedBlockingMultiQueue[Int, OutgoingResponse](connection.server.sendingQueueSize)
+  val multiQueue = new LinkedBlockingMultiQueue[Int, OutgoingResponse](connection.server.maxQueueSize)
   val flows = new ConcurrentHashMap[Int, ResponseFlow]
 
   def totalSize() = multiQueue.totalSize

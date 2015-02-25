@@ -1,33 +1,33 @@
 package mot.impl
 
-import java.net.Socket
-import scala.util.control.NonFatal
+import java.net.InetAddress
 import java.net.InetSocketAddress
-import java.util.concurrent.atomic.AtomicBoolean
-import java.io.IOException
-import java.util.concurrent.atomic.AtomicLong
-import java.util.concurrent.TimeUnit
-import com.typesafe.scalalogging.slf4j.StrictLogging
-import scala.concurrent.duration.Duration
-import mot.util.Util.FunctionToRunnable
-import mot.util.Util
-import mot.Address
-import mot.Client
-import mot.Message
-import mot.queue.LinkedBlockingMultiQueue
-import mot.dump.Operation
-import mot.dump.TcpEvent
+import java.net.Socket
+import java.net.SocketException
+import java.net.SocketTimeoutException
+import java.net.UnknownHostException
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
-import mot.dump.Direction
-import scala.util.Try
+
+import scala.concurrent.duration.Duration
 import scala.util.Failure
 import scala.util.Success
+import scala.util.Try
+import scala.util.control.NonFatal
+
+import com.typesafe.scalalogging.slf4j.StrictLogging
+
+import mot.Address
+import mot.Client
 import mot.LocalClosedException
-import java.net.InetAddress
-import java.net.SocketException
-import java.net.UnknownHostException
-import java.net.SocketTimeoutException
+import mot.Message
+import mot.dump.Direction
+import mot.dump.Operation
+import mot.dump.TcpEvent
+import mot.queue.LinkedBlockingMultiQueue
+import mot.util.Util.FunctionToRunnable
 
 /**
  * Represents the link between the client and one server.
@@ -37,10 +37,10 @@ class ClientConnector(val client: Client, val target: Address) extends StrictLog
 
   val creationTime = System.nanoTime()
 
-  val sendingQueue = new LinkedBlockingMultiQueue[String, OutgoingEvent](client.sendingQueueSize)
+  val sendingQueue = new LinkedBlockingMultiQueue[String, OutgoingEvent]
 
-  val messagesQueue = sendingQueue.addSubQueue("messages", priority = 100)
-  val flowControlQueue = sendingQueue.addSubQueue("flowNotifications", capacity = 5, priority = 10)
+  val messagesQueue = sendingQueue.addSubQueue("messages", capacity = client.maxQueueSize, priority = 100)
+  val flowControlQueue = sendingQueue.addSubQueue("flow-control", capacity = 5, priority = 10)
 
   val writerThread = new Thread(connectLoop _, s"mot(${client.name})-writer-for-$target")
 

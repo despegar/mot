@@ -4,13 +4,13 @@ import mot.util.LiveTabler
 import mot.util.Tabler
 import mot.Context
 import mot.util.Util.CeilingDivider
-import scala.collection.immutable
 import mot.Address
 import mot.util.Util.atomicLong2Getter
+import mot.util.Differ
 
 class ClientConnector(context: Context) extends MultiCommandHandler {
 
-  val subcommands = immutable.Seq(Live, Totals)
+  val subcommands = Seq(Live, Totals)
   val name = "client-connector"
   val helpLine = "Show client connector statistics."
 
@@ -18,7 +18,7 @@ class ClientConnector(context: Context) extends MultiCommandHandler {
 
   object Live extends CommandHandler {
     val name = "live"
-    def handle(processedCommands: immutable.Seq[String], commands: immutable.Seq[String], partWriter: String => Unit): String = {
+    def handle(processedCommands: Seq[String], commands: Seq[String], partWriter: String => Unit): String = {
       import LiveTabler._
       import Tabler._
       import Alignment._
@@ -83,7 +83,7 @@ class ClientConnector(context: Context) extends MultiCommandHandler {
 
   object Totals extends SimpleCommandHandler {
     val name = "totals"
-    def simpleHandle(processedCommands: immutable.Seq[String], commands: immutable.Seq[String]): String = {
+    def simpleHandle(processedCommands: Seq[String], commands: Seq[String]): String = {
       val connector = try {
         getConnector(commands)
       } catch {
@@ -108,7 +108,7 @@ class ClientConnector(context: Context) extends MultiCommandHandler {
     }
   }
 
-  def getConnector(commands: immutable.Seq[String]) = {
+  def getConnector(commands: Seq[String]) = {
     if (commands.size < 2)
       throw new CommandException("Must specify client and target")
     val clientName +: targetName +: rest = commands
