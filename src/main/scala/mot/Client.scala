@@ -195,7 +195,6 @@ class Client(
       throw new IllegalStateException("Cannot send messages associated with a closed flow")
     checkTimeout(timeoutMs)
     val connector = getConnector(target)
-    flow.markUse()
     val pendingResponse = new PendingResponse(promise, timeoutMs, connector, flow)
     connector.offerRequest(message, pendingResponse, enqueingTimeout, enqueingTimeoutUnit)
   }

@@ -49,8 +49,7 @@ class ServerConnection(val server: Server, socketImpl: Socket) extends AbstractC
 
   logger.info("Accepted connection from " + remoteAddress)
 
-  def flow(flowId: Int) =
-    responseFlows.flow(flowId).getOrElse(throw new IllegalStateException("inexistent flow"))
+  def flow(flowId: Int) = responseFlows.flow(flowId)
 
   def start(): Unit = {
     party.context.dumper.dump(TcpEvent(this, Direction.Incoming, Operation.Creation))

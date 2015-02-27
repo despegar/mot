@@ -35,8 +35,6 @@ class ClientFlow private[mot](val id: Int, val client: Client) extends StrictLog
 
   private val status = new AtomicBoolean(true) // flows start open
 
-  @volatile private var _lastUse = -1L
-  
   /**
    * Close the flow. A frame is set telling the server in the other side to stop sending responses to the messages 
    * associated with this flow.
@@ -71,12 +69,6 @@ class ClientFlow private[mot](val id: Int, val client: Client) extends StrictLog
    */
   def isOpen() = status.get
 
-  private[mot] def markUse(): Unit = {
-    _lastUse = System.nanoTime()
-  }
-  
-  private[mot] def lastUse() = _lastUse
-  
   override def toString() = s"ClientFlow(id=$id,client=$client)"
 
 }
