@@ -78,6 +78,11 @@ With respect to concurrency, all the interface is thread-safe. In particular, me
 
 Regarding performance, a single client-server pair can easily reach a throughput in the order of hundreds of thousands of request-response round-trips, using two quad-core instances. The latency in idle hardware of a request-response round-trip is in the order of the single millisecond.
 
+API
+---
+
+* Browse [API documentation](http://www.javadoc.io/doc/com.github.marianobarrios/mot_2.11/) for the most recent release.
+
 Monitoring
 ----------
 
