@@ -1,5 +1,8 @@
 package mot
 
+/**
+ * Trait that represents Mot parties, either Client or Servers.
+ */
 trait MotParty {
   def name: String
   def context: Context

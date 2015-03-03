@@ -2,6 +2,10 @@ package mot
 
 import java.util.concurrent.TimeUnit
 
+/**
+ * Instances of this class are created by server-side parties as handlers for responding messages. Each respondible
+ * request has one distinct instance.
+ */
 class Responder private[mot](
     val connectionHandler: ServerConnectionHandler, 
     val requestId: Int, 

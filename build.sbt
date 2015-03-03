@@ -50,11 +50,14 @@ libraryDependencies := {
 unmanagedSourceDirectories in Compile := (scalaSource in Compile).value :: Nil
 unmanagedSourceDirectories in Test := (scalaSource in Test).value :: Nil
   
+scalacOptions in (Compile, doc) ++= Seq("-doc-root-content", baseDirectory.value + "/root-doc.txt")
+ 
 fork := true
 connectInput := true
 outputStrategy := Some(StdoutOutput)
 javaOptions  ++= Seq("-Xmx6200m", "-Xms6200m", "-XX:NewSize=5000m")
 
+autoAPIMappings := true
 publishMavenStyle := true
 
 pomExtra := (

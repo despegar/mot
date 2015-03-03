@@ -21,7 +21,7 @@ import mot.util.Util.FunctionToRunnable
 import mot.util.Util.closeSocket
 
 /**
- * Mot server.
+ * Mot server. Instantiate this class to create a server-side Mot protocol engine.
  *
  * @param context
  *   The context in which this server is registered.

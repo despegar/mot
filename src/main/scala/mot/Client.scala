@@ -24,7 +24,7 @@ import mot.util.UnaryPromise
 import mot.util.Util.FunctionToRunnable
 
 /**
- * Mot client.
+ * Mot client. Instantiate this class to create a client-side Mot protocol engine.
  *
  * @constructor Create a new Mot client.
  * 

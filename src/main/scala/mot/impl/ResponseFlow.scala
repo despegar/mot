@@ -2,16 +2,21 @@ package mot.impl
 
 import mot.queue.LinkedBlockingMultiQueue
 
-class ResponseFlow(
+/**
+ * Instances of this class represent a server-side flow.
+ * 
+ * @see [[mot.ClientFlow]]
+ */
+class ResponseFlow private[mot] (
     connection: ServerConnection, val id: Int, val queue: LinkedBlockingMultiQueue[Int, OutgoingResponse]#SubQueue) {
   
   private var _lastUse = System.nanoTime()
   
-  def markUse() = {
+  private[mot] def markUse() = {
     _lastUse = System.nanoTime()
   }
   
-  def lastUse() = _lastUse
+  private[mot] def lastUse() = _lastUse
   
   def isSaturated() =
     queue.size.toDouble / queue.capacity > connection.server.sendingQueueSaturationThreshold

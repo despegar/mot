@@ -5,6 +5,20 @@ import mot.util.Util
 import mot.impl.Protocol
 import mot.util.ByteArray
 
+/**
+ * A Mot message. This class represents Mot messages, either outgoing or incoming. In order to construct an instance,
+ * one of the factory methods of the companion object must be used.
+ * 
+ * @param attributes 
+ *   Attributes of the message. 
+ * @param bodyLength 
+ *   Length of the body, in bytes.
+ * @param bodyParts 
+ *   Body of the message. The body is represented internally as a [[scala.collection.Seq]] of [[mot.util.ByteArray]]
+ *   instances. In the wire, the arrays are concatenated and the receiving side cannot see the original segmentation.
+ *   The segmentation of the body is useful for constructing message from various parts without having the copy to
+ *   one contiguous array. The incoming messages always have one part.
+ */
 case class Message private[mot] (
     attributes: Seq[(String, ByteArray)] = Nil, 
     bodyLength: Int,
@@ -16,16 +30,23 @@ case class Message private[mot] (
     s"$attributes=[${attrKeys.mkString(",")}],bodySize=$bodySize"
   }
   
-  def uniquePart(): ByteArray = {
+  private def uniquePart(): ByteArray = {
     if (bodyParts.length == 1)
       bodyParts.head
     else
       throw new Exception("Message has not exactly one part")   
   } 
   
+  /**
+   * Return the first attribute that has the name passed as an argument.
+   */
   def firstAttribute(name: String): Option[ByteArray] = 
     attributes.find { case (n, v) => n == name } map { case (n, value) => value }
   
+  /**
+   * Return the first attribute that has the name passed as an argument and then convert it to a string using 
+   * [[mot.Message.defaultEncoding]].
+   */
   def stringFirstAttribute(name: String): Option[String] = 
     firstAttribute(name).map(b => b.asString(Message.defaultEncoding))
   
@@ -35,6 +56,10 @@ case class Message private[mot] (
 
 object Message {
 
+  /**
+   * Character encoding used for the factory methods that convert strings to byte arrays or vice versa. 
+   * It is currently UTF-8.
+   */
   val defaultEncoding = StandardCharsets.UTF_8
   
   def fromString(attributes: Map[String, ByteArray], string: String): Message = 
@@ -89,7 +114,7 @@ object Message {
     }
   }
   
-  def validateBodyParts(bodyParts: Seq[ByteArray]) = {
+  private def validateBodyParts(bodyParts: Seq[ByteArray]) = {
     import Limits._
     // avoid the intermediate collection that map + sum would produce
     val totalSize = bodyParts.foldLeft(0)(_ + _.length)
