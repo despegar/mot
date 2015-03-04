@@ -176,7 +176,6 @@ class Proxy(val context: Context) extends StrictLogging {
         closedFlows.put(responder.flow, backendFlow)
       }
     } catch {
-      case e: IllegalStateException => // flow expired
       case e: InvalidConnectionException => // connection expired
     }
   } catch {
@@ -200,7 +199,7 @@ class Proxy(val context: Context) extends StrictLogging {
       while (it.hasNext) {
         val (frontEndFlow, backendFlow) = it.next()
         try {
-          if (frontEndFlow.isRecovered) {
+          if (frontEndFlow.isTerminated || frontEndFlow.isRecovered) {
             it.remove()
             logger.debug("Opening flow: " + backendFlow)
             backendFlow.openFlow()
@@ -220,19 +219,14 @@ class Proxy(val context: Context) extends StrictLogging {
     ex
   }
 
-  val flowGc = Duration(5, TimeUnit.MINUTES)
-
   private def flowExpiratorTask() = {
     try {
-      val threshold = System.nanoTime() - flowGc.toNanos
       val it = backendFlows.entrySet.iterator
       while (it.hasNext) {
         val entry = it.next
-        val (frontEndFlow, backEndFlow) = (entry.getKey, entry.getValue)
-        if (frontEndFlow.lastUse < threshold) {
-          logger.debug(s"Expiring flow ${backEndFlow.id} after $flowGc of inactivity")
+        val frontEndFlow = entry.getKey
+        if (frontEndFlow.isTerminated)
           it.remove()
-        }
       }
     } catch {
       case NonFatal(e) => context.uncaughtErrorHandler.handle(e)

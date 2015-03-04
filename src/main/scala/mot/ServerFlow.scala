@@ -22,6 +22,14 @@ class ServerFlow private[mot] (
   
   private[mot] def lastUse() = _lastUse
   
+  @volatile private var terminated = false
+  
+  def isTerminated() = terminated
+  
+  private[mot] def terminate(): Unit = {
+    terminated = true
+  }
+  
   def isSaturated() =
     queue.size.toDouble / queue.capacity > connection.server.sendingQueueSaturationThreshold
   
