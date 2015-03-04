@@ -9,7 +9,7 @@ import mot.util.Util.FunctionToRunnable
 import scala.util.control.NonFatal
 import mot.ServerFlow
 
-class ResponseFlows(connection: ServerConnection) extends StrictLogging {
+class ServerFlows(connection: ServerConnection) extends StrictLogging {
 
   val multiQueue = new LinkedBlockingMultiQueue[Int, OutgoingResponse](connection.server.maxQueueSize)
   val flows = new ConcurrentHashMap[Int, ServerFlow]

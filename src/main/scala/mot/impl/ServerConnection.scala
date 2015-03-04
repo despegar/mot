@@ -25,7 +25,7 @@ import mot.InvalidConnectionException
 
 class ServerConnection(val server: Server, socketImpl: Socket) extends AbstractConnection(server, socketImpl) {
 
-  val responseFlows = new ResponseFlows(this)
+  val responseFlows = new ServerFlows(this)
 
   val readerThread = new Thread(readerLoop _, s"mot(${server.name})-reader-for-$remoteAddress")
   val writerThread = new Thread(writerLoop _, s"mot(${server.name})-writer-for-$remoteAddress")
