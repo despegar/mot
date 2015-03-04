@@ -16,7 +16,6 @@ import java.util.concurrent.ConcurrentHashMap
 import mot.ClientFlow
 import mot.IncomingResponse
 import scala.collection.JavaConversions._
-import mot.ServerConnectionHandler
 import mot.InvalidConnectionException
 import mot.util.Util.FunctionToRunnable
 import scala.util.control.NonFatal
