@@ -7,7 +7,7 @@ import java.util.concurrent.TimeUnit
  * request has one distinct instance.
  */
 class Responder private[mot](
-    val connectionHandler: ServerConnectionHandler, 
+    private val connectionHandler: ServerConnectionHandler, 
     val requestId: Int, 
     val timeoutMs: Int,
     val serverFlowId: Int) {
@@ -25,6 +25,8 @@ class Responder private[mot](
       responseSent = true
     success
   }
+
+  def flow() = connectionHandler.flow(serverFlowId).getOrElse(throw new IllegalStateException("flow expired"))
   
   /**
    * Offer a response. Return whether the response could be enqueued. Never block.

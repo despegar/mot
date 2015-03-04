@@ -3,7 +3,6 @@ package mot
 import java.util.concurrent.TimeUnit
 import mot.impl.ServerConnection
 import mot.impl.OutgoingResponse
-import mot.impl.ResponseFlow
 
 class ServerConnectionHandler private[mot] (conn: ServerConnection) {
 
@@ -16,9 +15,9 @@ class ServerConnectionHandler private[mot] (conn: ServerConnection) {
     _connection = None
   }
 
-  private def connection() = _connection.getOrElse(throw new InvalidConnectionException(_exception.get))
+  private[mot] def connection() = _connection.getOrElse(throw new InvalidConnectionException(_exception.get))
 
-  def flow(flowId: Int): Option[ResponseFlow] = connection().flow(flowId)
+  def flow(flowId: Int): Option[ServerFlow] = connection().flow(flowId)
   
   private[mot] def offerResponse(
       serverFlowId: Int, 
@@ -28,5 +27,6 @@ class ServerConnectionHandler private[mot] (conn: ServerConnection) {
       timeUnit: TimeUnit): Boolean = {
     connection().offerResponse(serverFlowId, OutgoingResponse(requestId, message), wait, timeUnit)
   }
+  
   
 }

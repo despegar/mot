@@ -7,18 +7,19 @@ import java.util.concurrent.ConcurrentHashMap
 import com.typesafe.scalalogging.slf4j.StrictLogging
 import mot.util.Util.FunctionToRunnable
 import scala.util.control.NonFatal
+import mot.ServerFlow
 
 class ResponseFlows(connection: ServerConnection) extends StrictLogging {
 
   val multiQueue = new LinkedBlockingMultiQueue[Int, OutgoingResponse](connection.server.maxQueueSize)
-  val flows = new ConcurrentHashMap[Int, ResponseFlow]
+  val flows = new ConcurrentHashMap[Int, ServerFlow]
 
   def totalSize() = multiQueue.totalSize
 
-  def getOrCreateFlow(flowId: Int): ResponseFlow = synchronized {
+  def getOrCreateFlow(flowId: Int): ServerFlow = synchronized {
     val (subQueue, created) = multiQueue.getOrCreateSubQueue(flowId)
     if (created) {
-      val newFlow = new ResponseFlow(connection, flowId, subQueue)
+      val newFlow = new ServerFlow(connection, flowId, subQueue)
       flows.put(flowId, newFlow)
       newFlow
     } else {
@@ -45,7 +46,10 @@ class ResponseFlows(connection: ServerConnection) extends StrictLogging {
         logger.debug(s"Expiring flow ${flow.id} after ${ResponseFlows.flowGc} of inactivity")
         // order is important
         it.remove()
-        multiQueue.removeSubQueue(flow.id)
+        val removed = multiQueue.removeSubQueue(flow.id)
+        // In case someone hold a reference to the now-obsolete flow, we empty the queue, to avoid making the holder
+        // forever believe that it is saturated.
+        removed.foreach(_.clear())
       }
     }
   }

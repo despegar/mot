@@ -110,11 +110,13 @@ class LinkedBlockingMultiQueue[A, E >: Null](val defaultCapacity: Int = Int.MaxV
     part
   }
 
-  def removeSubQueue(key: A): Unit = {
+  def removeSubQueue(key: A): Option[SubQueue] = {
     takeLock.lock()
     try {
-      childrenMap.remove(key)
-      priorityGroups = getPriorityGroups()
+      val removed = childrenMap.remove(key)
+      if (removed != null)
+        priorityGroups = getPriorityGroups()
+      Option(removed)
     } finally {
       takeLock.unlock()
     }
@@ -250,6 +252,28 @@ class LinkedBlockingMultiQueue[A, E >: Null](val defaultCapacity: Int = Int.MaxV
      * Tail of linked list. Invariant: last.next == null
      */
     private var last = head
+
+    def clear(): Unit = {
+      putLock.lock()
+      takeLock.lock()
+      try {
+        var h = head
+        var p = h.next
+        while (p != null) {
+          // help GC
+          h.next = h
+          p.item = null
+          h = p
+          p = h.next
+        }
+        head = last;
+        if (count.getAndSet(0) == capacity)
+          notFull.signal()
+      } finally {
+        putLock.unlock()
+        takeLock.unlock()
+      }
+    }
 
     def enable(status: Boolean): Unit = {
       takeLock.lock()

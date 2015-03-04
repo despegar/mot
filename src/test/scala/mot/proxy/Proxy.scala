@@ -32,6 +32,7 @@ import scala.concurrent.duration.Duration
 import mot.util.ByteArray
 import java.util.concurrent.ThreadPoolExecutor
 import mot.util.ExecutorPromise
+import mot.ServerFlow
 
 /**
  * Mot reverse proxy
@@ -74,8 +75,8 @@ class Proxy(val context: Context) extends StrictLogging {
     writeBufferSize = 200000)
 
   val responseQueue = new LinkedBlockingQueue[(IncomingResponse, Responder)](100000)
-  val backendFlows = new ConcurrentHashMap[FrontEndFlow, ClientFlow]()
-  val closedFlows = new ConcurrentHashMap[FrontEndFlow, ClientFlow]()
+  val backendFlows = new ConcurrentHashMap[ServerFlow, ClientFlow]()
+  val closedFlows = new ConcurrentHashMap[ServerFlow, ClientFlow]()
 
   val responseOverflow = new AtomicLong
   val messageErrors = new AtomicLong
@@ -98,7 +99,7 @@ class Proxy(val context: Context) extends StrictLogging {
     flowMonitorThread.join()
   }
 
-  def getFlow(frontEndFlow: FrontEndFlow) = {
+  def getFlow(frontEndFlow: ServerFlow) = {
     val existent = backendFlows.get(frontEndFlow)
     if (existent != null) {
       existent
@@ -125,7 +126,7 @@ class Proxy(val context: Context) extends StrictLogging {
     val success = msg.responderOption match {
       case Some(resp) =>
         val promise = new ExecutorPromise(backendExecutor, responseHandler(resp))
-        val flow = getFlow(FrontEndFlow(resp.connectionHandler, resp.serverFlowId))
+        val flow = getFlow(resp.flow)
         if (flow.isOpen) {
           backend.offerRequest(target, msg.message, resp.timeoutMs, promise, flow)
         } else {
@@ -168,12 +169,12 @@ class Proxy(val context: Context) extends StrictLogging {
     if (!responseSuccess)
       responseOverflow.incrementAndGet()
     try {
-      val shouldCloseBackEnd = responder.connectionHandler.flow(responder.serverFlowId).map(_.isSaturated).getOrElse(false) 
+      val shouldCloseBackEnd = responder.flow.isSaturated
       if (shouldCloseBackEnd) {
         val backendFlow = incomingResponse.clientFlow
         if (backendFlow.closeFlow())
           logger.debug("Closing flow: " + backendFlow)
-        closedFlows.put(FrontEndFlow(responder.connectionHandler, responder.serverFlowId), backendFlow)
+        closedFlows.put(responder.flow, backendFlow)
       }
     } catch {
       case e: IllegalStateException => // flow expired
@@ -198,17 +199,14 @@ class Proxy(val context: Context) extends StrictLogging {
     while (!closed) {
       val it = closedFlows.iterator
       while (it.hasNext) {
-        val (FrontEndFlow(handler, frontendFlowId), backendFlow) = it.next()
-        // frontEndFlowId should usually be mainFlow (0)
+        val (frontEndFlow, backendFlow) = it.next()
         try {
-          val recoveredOrExpired = handler.flow(frontendFlowId).map(_.isRecovered).getOrElse(true) 
-          if (recoveredOrExpired) {
+          if (frontEndFlow.isRecovered) {
             it.remove()
             logger.debug("Opening flow: " + backendFlow)
             backendFlow.openFlow()
           }
         } catch {
-          case e: IllegalStateException => it.remove() // flow expired
           case e: InvalidConnectionException => it.remove() // connection expired
         }
       }

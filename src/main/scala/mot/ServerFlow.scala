@@ -1,14 +1,18 @@
-package mot.impl
+package mot
 
 import mot.queue.LinkedBlockingMultiQueue
+import mot.impl.ServerConnection
+import mot.impl.OutgoingResponse
 
 /**
  * Instances of this class represent a server-side flow.
  * 
  * @see [[mot.ClientFlow]]
  */
-class ResponseFlow private[mot] (
-    connection: ServerConnection, val id: Int, val queue: LinkedBlockingMultiQueue[Int, OutgoingResponse]#SubQueue) {
+class ServerFlow private[mot] (
+    private val connection: ServerConnection, 
+    val id: Int, 
+    private [mot] val queue: LinkedBlockingMultiQueue[Int, OutgoingResponse]#SubQueue) {
   
   private var _lastUse = System.nanoTime()
   
