@@ -22,6 +22,7 @@ import mot.protocol.FlowControlFrame
 import mot.IncomingMessage
 import java.util.concurrent.RejectedExecutionException
 import mot.InvalidConnectionException
+import mot.ServerFlow
 
 class ServerConnection(val server: Server, socketImpl: Socket) extends AbstractConnection(server, socketImpl) {
 
@@ -66,14 +67,13 @@ class ServerConnection(val server: Server, socketImpl: Socket) extends AbstractC
       throw new InvalidConnectionException(e)
   }
   
-  def offerResponse(serverFlowId: Int, outgoingResponse: OutgoingResponse, wait: Long, timeUnit: TimeUnit): Boolean = {
+  def offerResponse(serverFlow: ServerFlow, outgoingResponse: OutgoingResponse, wait: Long, timeUnit: TimeUnit): Boolean = {
     checkClosed()
     if (outgoingResponse.message.bodyLength > remoteMaxLength.get) {
       tooLargeResponses.incrementAndGet()
       throw new MessageTooLargeException(outgoingResponse.message.bodyLength, remoteMaxLength.get)
     }
-    val flow = responseFlows.getOrCreateFlow(serverFlowId)
-    flow.queue.offer(outgoingResponse, wait, timeUnit)
+    serverFlow.queue.offer(outgoingResponse, wait, timeUnit)
   }
 
   def localHello = ServerHello(protocolVersion = 1, localName, party.maxLength)
@@ -111,7 +111,8 @@ class ServerConnection(val server: Server, socketImpl: Socket) extends AbstractC
   def processRequest(frame: RequestFrame): Unit = {
     val body = frame.body.head // Incoming messages only have one part
     receivedRespondable += 1
-    val responder = Some(new Responder(this, frame.requestId, frame.timeout, frame.flowId))
+    val flow = responseFlows.getOrCreateFlow(frame.flowId)
+    val responder = Some(new Responder(this, frame.requestId, frame.timeout, flow))
     val message = new Message(frame.attributes, body.length, body :: Nil)
     val hello = helloPromise.result
     handle(IncomingMessage(responder, remoteAddress, localAddress, hello.sender, hello.maxLength, message))

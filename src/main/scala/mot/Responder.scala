@@ -12,7 +12,7 @@ class Responder private[mot](
     private val connection: ServerConnection, 
     val requestId: Int, 
     val timeoutMs: Int,
-    val serverFlowId: Int) {
+    val flow: ServerFlow) {
     
   private var responseSent = false
 
@@ -22,23 +22,18 @@ class Responder private[mot](
   def offer(message: Message, wait: Long, timeUnit: TimeUnit): Boolean = synchronized {
     if (responseSent)
       throw new ResponseAlreadySendException
-    val success = connection.offerResponse(serverFlowId, OutgoingResponse(requestId, message), wait, timeUnit)
+    val success = connection.offerResponse(flow, OutgoingResponse(requestId, message), wait, timeUnit)
     if (success)
       responseSent = true
     success
   }
 
   /**
-   * Return the flow in which the response will be sent.
-   */
-  def flow() = connection.flow(serverFlowId).getOrElse(throw new IllegalStateException("flow expired"))
-  
-  /**
    * Offer a response. Return whether the response could be enqueued. Never block.
    */
   def offer(message: Message): Boolean = offer(message, 0, TimeUnit.NANOSECONDS)
   
   override def toString() = 
-    s"Responder(connection=$connection,requestId=$requestId,timeout=${timeoutMs}ms,serverFlowId=$serverFlowId)"
+    s"Responder(connection=$connection,requestId=$requestId,timeout=${timeoutMs}ms,serverFlowId=$flow)"
   
 }
