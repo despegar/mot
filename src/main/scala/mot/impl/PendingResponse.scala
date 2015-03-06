@@ -43,7 +43,7 @@ class PendingResponse(
     promise.tryComplete(IncomingResponse(conn.remoteAddress, Some(conn.localAddress), Success(message), flow))
   }
 
-  def error(conn: ClientConnection, error: Exception) = synchronized {
+  def error(conn: ClientConnection, error: Throwable) = synchronized {
     // Errors can occur at any time, even before the expiration is scheduled
     if (expirationTask != null)
       expirationTask.cancel()

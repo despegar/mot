@@ -19,7 +19,6 @@ import mot.protocol.FlowControlFrame
 import mot.dump.TcpEvent
 import mot.dump.Direction
 import mot.dump.Operation
-import mot.InvalidConnectionException
 
 class ClientConnection(val connector: ClientConnector, socketImpl: Socket)
   extends AbstractConnection(connector.client, socketImpl) {
@@ -44,7 +43,7 @@ class ClientConnection(val connector: ClientConnector, socketImpl: Socket)
   def reportClose(cause: Throwable): Unit = {
     logger.debug("Forgetting all promises of client connection: " + socket.impl.getLocalSocketAddress)
     for (pendingResponse <- connector.pendingResponses.values) {
-      pendingResponse.error(this, new InvalidConnectionException(cause))
+      pendingResponse.error(this, cause)
     }
   }
 

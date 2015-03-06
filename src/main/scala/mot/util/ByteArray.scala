@@ -2,6 +2,9 @@ package mot.util
 
 import java.nio.charset.Charset
 
+/**
+ * Instances of this class represent a slice of a Scala byte array.
+ */
 class ByteArray private (val array: Array[Byte], val offset: Int, val length: Int) {
 
   def apply(i: Int) = array(offset + i)

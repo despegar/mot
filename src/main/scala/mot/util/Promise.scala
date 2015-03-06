@@ -1,5 +1,8 @@
 package mot.util
 
+/**
+ * Promise is an object which can be completed with a value or failed with an exception.
+ */
 trait Promise[-A] {
   
   /** 

@@ -7,6 +7,9 @@ import mot.buffer.WriteBuffer
 import java.io.OutputStream
 import mot.util.ByteArray
 
+/**
+ * Frames that mix this trait can add a block of attributes. Attributes are a list of pairs of String and byte arrays.
+ */
 trait AttributesSupport {
 
   import AttributesSupport._

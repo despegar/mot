@@ -5,15 +5,11 @@ import java.net.Socket
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
-
 import scala.concurrent.duration.Duration
 import scala.util.control.NonFatal
-
 import com.typesafe.scalalogging.slf4j.StrictLogging
-
 import mot.ByeException
 import mot.CounterpartyClosedException
-import mot.GreetingAbortedException
 import mot.LocalClosedException
 import mot.MotParty
 import mot.ResetException
@@ -33,6 +29,7 @@ import mot.protocol.ResetFrame
 import mot.protocol.UnknownFrame
 import mot.queue.Pollable
 import mot.util.RichSocket
+import mot.util.NoStackTraceException
 
 abstract class AbstractConnection(val party: MotParty, val socketImpl: Socket) extends Connection with StrictLogging {
 
@@ -111,6 +108,7 @@ abstract class AbstractConnection(val party: MotParty, val socketImpl: Socket) e
   private val maxBufferingTimeNanos = Duration(100, TimeUnit.MILLISECONDS).toNanos
   
   def writerLoop(): Unit = {
+    class GreetingAbortedException extends Exception with NoStackTraceException
     try {
       writeFrame(localHello.toHelloMessage)
       writeBuffer.flush()

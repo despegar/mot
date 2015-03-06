@@ -5,6 +5,9 @@ import mot.buffer.WriteBuffer
 import mot.buffer.ReadBuffer
 import mot.util.ByteArray
 
+/**
+ * Frames that mix this trait can add a body, which is a byte array at the end of the frame.
+ */
 trait BodySupport {
   
   val body: Seq[ByteArray]
