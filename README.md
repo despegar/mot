@@ -63,7 +63,7 @@ It is worth noting that this mechanism does not operate on bytes, but in whole m
 Wire Format
 -----------
 
-The protocol wire format is specified as a handful of binary frames. Simplicity was an explicit design goal, and there are currently just eight frame types, which are documented [here](src/main/scala/mot/protocol).
+The protocol wire format is specified as a handful of binary frames. Simplicity was an explicit design goal, and there are currently just eight frame types, which are documented [here](http://static.javadoc.io/com.github.marianobarrios/mot_2.11/0.8-RC9/index.html#mot.protocol.package).
 
 Implementation
 --------------
