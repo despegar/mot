@@ -24,7 +24,7 @@ class PendingResponse(
   if (promise == null)
     throw new NullPointerException("promise cannot be null")
   
-  var expirationTask: Timeout = _
+  @volatile var expirationTask: Timeout = _
 
   def scheduleExpiration() = {
     expirationTask = connector.client.promiseExpirator.newTimeout(timeout _, timeoutMs, TimeUnit.MILLISECONDS)
@@ -38,15 +38,19 @@ class PendingResponse(
     connector.pendingResponses.remove(requestId)
   }
 
-  def fulfill(conn: ClientConnection, message: Message) = synchronized {
-    expirationTask.cancel()
+  def fulfill(conn: ClientConnection, message: Message) = {
+    // Can occur even before the expiration is scheduled
+    val exp = expirationTask // dereference volatile once
+    if (exp != null)
+      exp.cancel()
     promise.tryComplete(IncomingResponse(conn.remoteAddress, Some(conn.localAddress), Success(message), flow))
   }
 
-  def error(conn: ClientConnection, error: Throwable) = synchronized {
-    // Errors can occur at any time, even before the expiration is scheduled
-    if (expirationTask != null)
-      expirationTask.cancel()
+  def error(conn: ClientConnection, error: Throwable) = {
+    // Can occur even before the expiration is scheduled
+    val exp = expirationTask // dereference volatile once
+    if (exp != null)
+      exp.cancel()
     promise.tryComplete(IncomingResponse(conn.remoteAddress, Some(conn.localAddress), Failure(error), flow))
   }
 

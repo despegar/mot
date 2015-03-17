@@ -77,14 +77,16 @@ class ClientConnector(val client: Client, val target: Address) extends StrictLog
 
   def offerRequest(message: Message, pendingResponse: PendingResponse, timeout: Long, unit: TimeUnit): Boolean = {
     lastUse = System.nanoTime()
-    pendingResponse.synchronized {
-      val success = messagesQueue.offer(OutgoingMessage(message, Some(pendingResponse)), timeout, unit)
-      if (success) {
-        pendingResponses.put(pendingResponse.requestId, pendingResponse)
-        pendingResponse.scheduleExpiration()
-      }
-      success
+    // It is necessary to add the pending response to the map before enqueuing, to avoid a race between that and the
+    // arrival of the response.
+    pendingResponses.put(pendingResponse.requestId, pendingResponse)
+    val success = messagesQueue.offer(OutgoingMessage(message, Some(pendingResponse)), timeout, unit)
+    if (success) {
+      pendingResponse.scheduleExpiration()
+    } else {
+      pendingResponses.remove(pendingResponse.requestId)
     }
+    success
   }
 
   def connectLoop(): Unit = {
