@@ -82,16 +82,6 @@ abstract class AbstractConnection(val party: MotParty, val socketImpl: Socket) e
     setException(new LocalClosedException)
   }
 
-  /*
-   * The purpose of heart beats is to keep the wire active where there are no messages.
-   * This is useful for detecting dropped connections and avoiding read timeouts in the other side.
-   */
-  private def sendHeartbeatIfNeeded(): Unit = {
-    val now = System.nanoTime()
-    if (now - lastWrite >= Protocol.HeartBeatIntervalNs)
-      writeFrame(HeartbeatFrame())
-  }
-
   private def closeSocket(e: Throwable): Unit = {
     if (socket.closeOnce()) {
       logger.info("Closing connection: " + e.getMessage)
@@ -105,8 +95,14 @@ abstract class AbstractConnection(val party: MotParty, val socketImpl: Socket) e
     }
   }
 
-  private val maxBufferingTimeNanos = Duration(100, TimeUnit.MILLISECONDS).toNanos
+  /*
+   * Immediately sending all outgoing messages can cause to many system calls with memory copying (socket writes). On
+   * the other hand, to long a buffering can reduce response time. 
+   */
+  private val maxBufferingTimeNs = Duration(100, TimeUnit.MICROSECONDS).toNanos
   
+  private val pollingTimeoutNs = Duration(1, TimeUnit.SECONDS).toNanos
+    
   def writerLoop(): Unit = {
     class GreetingAbortedException extends Exception with NoStackTraceException
     try {
@@ -116,15 +112,17 @@ abstract class AbstractConnection(val party: MotParty, val socketImpl: Socket) e
         if (!wait(remoteHelloLatch, stop = isClosing _))
           throw new GreetingAbortedException
         while (!isClosing) {
-          outgoingQueue.poll(300, TimeUnit.MILLISECONDS) match {
-            case event: OutgoingEvent =>
+          outgoingQueue.pollWithRemaining(pollingTimeoutNs, TimeUnit.NANOSECONDS) match {
+            case (event: OutgoingEvent, remaining) =>
               processOutgoing(event)
-              val now = System.nanoTime()
-              if (outgoingQueue.isEmpty || now - writeBuffer.lastFlush > maxBufferingTimeNanos)
+              if (remaining == 0 || System.nanoTime() - writeBuffer.lastFlush > maxBufferingTimeNs)
                 writeBuffer.flush()
-            case null =>
-              val now = System.nanoTime()
-              if (now - lastWrite >= Protocol.HeartBeatIntervalNs) {
+            case (null, _) =>
+              /*
+               * The purpose of heart beats is to keep the wire active where there are no messages.
+               * This is useful for detecting dropped connections and avoiding read timeouts in the other side.
+               */
+              if (System.nanoTime() - lastWrite >= Protocol.HeartBeatIntervalNs) {
                 writeFrame(HeartbeatFrame())
                 writeBuffer.flush()
               }

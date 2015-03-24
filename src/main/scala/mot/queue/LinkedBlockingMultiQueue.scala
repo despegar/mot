@@ -171,19 +171,24 @@ class LinkedBlockingMultiQueue[A, E >: Null](val defaultCapacity: Int = Int.MaxV
   }
 
   def poll(timeout: Long, unit: TimeUnit): E = {
+    val (elem, _) = pollWithRemaining(timeout, unit)
+    elem
+  }
+  
+  def pollWithRemaining(timeout: Long, unit: TimeUnit): (E, Int) = {
     var remaining = unit.toNanos(timeout)
     takeLock.lockInterruptibly()
     val (subQueue, oldSize, elem) = try {
       while (!anyQueueHasAnything()) {
         if (remaining <= 0)
-          return null
+          return (null, 0)
         remaining = notEmpty.awaitNanos(remaining)
       }
       // at this point we know there is an element
       val (subQueue, elem) = deque()
       val oldSize = subQueue.count.getAndDecrement()
       if (oldSize > 1) {
-        // subqueue has already elements, notify next poller
+        // subqueue still has elements, notify next poller
         notEmpty.signal()
       }
       (subQueue, oldSize, elem)
@@ -194,7 +199,7 @@ class LinkedBlockingMultiQueue[A, E >: Null](val defaultCapacity: Int = Int.MaxV
       // we just took an element from a full queue, notify any blocked offers
       subQueue.signalNotFull()
     }
-    elem
+    (elem, oldSize - 1)
   }
 
   /*
