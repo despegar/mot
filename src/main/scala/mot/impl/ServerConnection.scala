@@ -23,6 +23,7 @@ import mot.IncomingMessage
 import java.util.concurrent.RejectedExecutionException
 import mot.InvalidConnectionException
 import mot.ServerFlow
+import mot.util.Util.RichAtomicLong
 
 class ServerConnection(val server: Server, socketImpl: Socket) extends AbstractConnection(server, socketImpl) {
 
@@ -38,10 +39,9 @@ class ServerConnection(val server: Server, socketImpl: Socket) extends AbstractC
   def remoteNameOption = helloPromise.value.map(_.sender)
   def remoteMaxLength = helloPromise.value.map(_.maxLength)
 
-  // Need not be atomic as the are incremented only in connection thread
-  @volatile var receivedRespondable = 0L
-  @volatile var receivedUnrespondable = 0L
-  @volatile var sentResponses = 0L
+  val receivedRespondable = new AtomicLong
+  val receivedUnrespondable = new AtomicLong
+  val sentResponses = new AtomicLong
 
   // Need be atomic as it is incremented from user threads
   val tooLargeResponses = new AtomicLong
@@ -84,7 +84,7 @@ class ServerConnection(val server: Server, socketImpl: Socket) extends AbstractC
     case outRes: OutgoingResponse =>
       val msg = outRes.message
       writeFrame(ResponseFrame(outRes.requestId, msg.attributes, msg.bodyLength, msg.bodyParts))
-      sentResponses += 1
+      sentResponses.lazyIncrement() // valid because only one thread expires
     case _ => throw new MatchError(event) // avoid warning
   }
 
@@ -102,7 +102,7 @@ class ServerConnection(val server: Server, socketImpl: Socket) extends AbstractC
 
   def processMessage(frame: MessageFrame): Unit = {
     val body = frame.body.head // Incoming messages only have one part
-    receivedUnrespondable += 1
+    receivedUnrespondable.lazyIncrement()  // valid because only one thread expires
     val hello = helloPromise.result
     val message = new Message(frame.attributes, body.length, body :: Nil)
     handle(IncomingMessage(None, remoteAddress, localAddress, hello.sender, hello.maxLength, message))
@@ -110,7 +110,7 @@ class ServerConnection(val server: Server, socketImpl: Socket) extends AbstractC
 
   def processRequest(frame: RequestFrame): Unit = {
     val body = frame.body.head // Incoming messages only have one part
-    receivedRespondable += 1
+    receivedRespondable.lazyIncrement() // valid because only one thread expires
     val flow = responseFlows.getOrCreateFlow(frame.flowId)
     val responder = Some(new Responder(this, frame.requestId, frame.timeout, flow))
     val message = new Message(frame.attributes, body.length, body :: Nil)

@@ -44,15 +44,15 @@ class ClientConnector(context: Context) extends MultiCommandHandler {
         Col[Long]("DIR-WRITES", 10, Right),
         Col[Long]("SOCK-READS", 10, Right),
         Col[Long]("READ-FULL", 9, Right)) { printer =>
-          val messageSent = new Differ(connector.unrespondableSentCounter _)
-          val requestSent = new Differ(connector.respondableSentCounter _)
-          val responseReceived = new Differ(connector.responsesReceivedCounter _)
-          val timeouts = new Differ(connector.timeoutsCounter _)
-          val sendTooLarge = new Differ(connector.triedToSendTooLargeMessage _)
+          val messageSent = new Differ(connector.unrespondableSentCounter)
+          val requestSent = new Differ(connector.respondableSentCounter)
+          val responseReceived = new Differ(connector.responsesReceivedCounter)
+          val timeouts = new Differ(connector.timeoutsCounter)
+          val sendTooLarge = new Differ(connector.triedToSendTooLargeMessage)
           val bytesWriten = new Differ(connection.writeBuffer.bytesCount)
           val bytesRead = new Differ(connection.readBuffer.bytesCount)
           val socketWrites = new Differ(connection.writeBuffer.writeCount)
-          val socketWritesFull = new Differ(connection.writeBuffer.fullWriteCount)
+          val socketWritesFull = new Differ(connection.writeBuffer.fullWriteCount())
           val directWrites = new Differ(connection.writeBuffer.directWriteCount)
           val socketReads = new Differ(connection.readBuffer.readCount)
           val socketReadFull = new Differ(connection.readBuffer.fullReadCount)
@@ -93,15 +93,15 @@ class ClientConnector(context: Context) extends MultiCommandHandler {
       "" +
         f"Sending queue size:                ${connector.messagesQueue.size}%11d\n" +
         f"Pending responses:                 ${connector.pendingResponses.size}%11d\n" +
-        f"Total messages sent:               ${connector.unrespondableSentCounter}%11d\n" +
-        f"Total requests sent:               ${connector.respondableSentCounter}%11d\n" +
-        f"Total responses received:          ${connector.responsesReceivedCounter}%11d\n" +
-        f"Total timed out requests:          ${connector.timeoutsCounter}%11d\n"
-        f"Total requests too large:          ${connector.triedToSendTooLargeMessage}%11d\n"
+        f"Total messages sent:               ${connector.unrespondableSentCounter.get}%11d\n" +
+        f"Total requests sent:               ${connector.respondableSentCounter.get}%11d\n" +
+        f"Total responses received:          ${connector.responsesReceivedCounter.get}%11d\n" +
+        f"Total timed out requests:          ${connector.timeoutsCounter.get}%11d\n"
+        f"Total requests too large:          ${connector.triedToSendTooLargeMessage.get}%11d\n"
         f"Total bytes written:               ${connection.writeBuffer.bytesCount}%11d\n" +
         f"Total bytes read:                  ${connection.readBuffer.bytesCount}%11d\n" +
         f"Total socket writes:               ${connection.writeBuffer.writeCount}%11d\n" +
-        f"Total socket writes (full buffer): ${connection.writeBuffer.fullWriteCount}%11d\n"
+        f"Total socket writes (full buffer): ${connection.writeBuffer.fullWriteCount.get}%11d\n"
         f"Total direct writes:               ${connection.writeBuffer.directWriteCount}%11d\n" +
         f"Total socket reads:                ${connection.readBuffer.readCount}%11d\n" +
         f"Total socket reads (full buffer):  ${connection.readBuffer.fullReadCount}%11d\n"

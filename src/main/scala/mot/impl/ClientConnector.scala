@@ -10,15 +10,12 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
-
 import scala.concurrent.duration.Duration
 import scala.util.Failure
 import scala.util.Success
 import scala.util.Try
 import scala.util.control.NonFatal
-
 import com.typesafe.scalalogging.slf4j.StrictLogging
-
 import mot.Address
 import mot.Client
 import mot.LocalClosedException
@@ -28,6 +25,7 @@ import mot.dump.Operation
 import mot.dump.TcpEvent
 import mot.queue.LinkedBlockingMultiQueue
 import mot.util.Util.FunctionToRunnable
+import java.util.concurrent.atomic.AtomicLong
 
 /**
  * Represents the link between the client and one server.
@@ -57,26 +55,24 @@ class ClientConnector(val client: Client, val target: Address) extends StrictLog
 
   val requestCounter = new AtomicInteger
 
-  @volatile var lastUse = System.nanoTime()
+  val lastUse = new AtomicLong(System.nanoTime())
 
-  // It need not be atomic as the expirator has only one thread
-  @volatile var timeoutsCounter = 0L
-
-  @volatile var unrespondableSentCounter = 0L
-  @volatile var respondableSentCounter = 0L
-  @volatile var responsesReceivedCounter = 0L
-  @volatile var triedToSendTooLargeMessage = 0L
+  val timeoutsCounter = new AtomicLong
+  val unrespondableSentCounter = new AtomicLong
+  val respondableSentCounter = new AtomicLong
+  val responsesReceivedCounter = new AtomicLong
+  val triedToSendTooLargeMessage = new AtomicLong
 
   writerThread.start()
   logger.debug(s"creating connector: ${client.name}->$target")
 
   def offerMessage(message: Message, timeout: Long, unit: TimeUnit): Boolean = {
-    lastUse = System.nanoTime()
+    lastUse.lazySet(System.nanoTime())
     messagesQueue.offer(OutgoingMessage(message, None), timeout, unit)
   }
 
   def offerRequest(message: Message, pendingResponse: PendingResponse, timeout: Long, unit: TimeUnit): Boolean = {
-    lastUse = System.nanoTime()
+    lastUse.lazySet(System.nanoTime())
     // It is necessary to add the pending response to the map before enqueuing, to avoid a race between that and the
     // arrival of the response.
     pendingResponses.put(pendingResponse.requestId, pendingResponse)

@@ -30,6 +30,7 @@ import mot.protocol.UnknownFrame
 import mot.queue.Pollable
 import mot.util.RichSocket
 import mot.util.NoStackTraceException
+import java.util.concurrent.atomic.AtomicLong
 
 abstract class AbstractConnection(val party: MotParty, val socketImpl: Socket) extends Connection with StrictLogging {
 
@@ -60,22 +61,22 @@ abstract class AbstractConnection(val party: MotParty, val socketImpl: Socket) e
 
   def setException(e: Throwable) = exception.compareAndSet(null, e)
 
-  @volatile var lastReception = System.nanoTime() // initialize as recently used
-  @volatile var lastWrite = 0L
+  val lastRead = new AtomicLong(System.nanoTime())
+  val lastWrite = new AtomicLong(System.nanoTime())
 
   def isClosing() = exception.get != null
 
   def readFrame(): Frame = {
     val msg = Frame.read(readBuffer, party.maxLength)
     party.context.dumper.dump(MotEvent(this, Direction.Incoming, msg))
-    lastReception = System.nanoTime()
+    lastRead.lazySet(System.nanoTime())
     msg
   }
 
   def writeFrame(msg: Frame): Unit = {
     party.context.dumper.dump(MotEvent(this, Direction.Outgoing, msg))
     msg.write(writeBuffer)
-    lastWrite = System.nanoTime()
+    lastWrite.lazySet(System.nanoTime())
   }
 
   def close(): Unit = {
@@ -122,7 +123,7 @@ abstract class AbstractConnection(val party: MotParty, val socketImpl: Socket) e
                * The purpose of heart beats is to keep the wire active where there are no messages.
                * This is useful for detecting dropped connections and avoiding read timeouts in the other side.
                */
-              if (System.nanoTime() - lastWrite >= Protocol.HeartBeatIntervalNs) {
+              if (System.nanoTime() - lastWrite.get >= Protocol.HeartBeatIntervalNs) {
                 writeFrame(HeartbeatFrame())
                 writeBuffer.flush()
               }

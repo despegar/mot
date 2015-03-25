@@ -74,4 +74,9 @@ object Util {
     case id: Infinite => "∞"
   }
   
+  implicit final class RichAtomicLong(value: AtomicLong) {
+    def lazyAdd(add: Long) = value.lazySet(value.get() + add)
+    def lazyIncrement() = lazyAdd(1)
+  }
+  
 }

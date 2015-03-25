@@ -2,6 +2,8 @@ package mot.buffer
 
 import java.io.OutputStream
 import mot.util.ByteArray
+import java.util.concurrent.atomic.AtomicLong
+import mot.util.Util.RichAtomicLong
 
 class WriteBuffer(val os: OutputStream, val bufferSize: Int) {
 
@@ -11,10 +13,10 @@ class WriteBuffer(val os: OutputStream, val bufferSize: Int) {
   
   private var position = 0
   
-  @volatile private var _bytesCount = 0L
-  @volatile private var _writeCount = 0L
-  @volatile private var _directWriteCount = 0L
-  @volatile private var _fullWriteCount = 0L
+  private val _bytesCount = new AtomicLong
+  private val _writeCount = new AtomicLong
+  private val _directWriteCount = new AtomicLong
+  private val _fullWriteCount = new AtomicLong
   
   def writen() = position
   def remaining() = bufferSize - position
@@ -22,9 +24,9 @@ class WriteBuffer(val os: OutputStream, val bufferSize: Int) {
   def isFull() = position == bufferSize
   def hasData() = position > 0
   
-  def bytesCount() = _bytesCount
-  def writeCount() = _writeCount
-  def directWriteCount() = _directWriteCount
+  def bytesCount() = _bytesCount.get
+  def writeCount() = _writeCount.get
+  def directWriteCount() = _directWriteCount.get
   def fullWriteCount() = _fullWriteCount
   
   private var _lastFlush = System.nanoTime()
@@ -46,8 +48,8 @@ class WriteBuffer(val os: OutputStream, val bufferSize: Int) {
        */
       flush()
       os.write(toWrite.array, toWrite.offset, toWrite.length)
-      _bytesCount += toWrite.length
-      _directWriteCount += 1
+      _bytesCount.lazyAdd(toWrite.length)
+      _directWriteCount.lazyIncrement()
     } else {
       var bytesPut = 0
       while (bytesPut < toWrite.length) {
@@ -64,10 +66,10 @@ class WriteBuffer(val os: OutputStream, val bufferSize: Int) {
   def flush() {
     if (hasData) {
       os.write(array, 0, position)
-      _bytesCount += position
-      _writeCount += 1
+      _bytesCount.lazyAdd(position)
+      _writeCount.lazyIncrement()
       if (isFull)
-        _fullWriteCount += 1
+        _fullWriteCount.lazyIncrement()
       position = 0
     }
     _lastFlush = System.nanoTime()

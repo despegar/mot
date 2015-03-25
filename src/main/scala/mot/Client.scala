@@ -116,7 +116,7 @@ class Client(
     while (it.hasNext) {
       val entry = it.next
       val (target, connector) = (entry.getKey, entry.getValue)
-      if (connector.lastUse < threshold) {
+      if (connector.lastUse.get < threshold) {
         logger.debug(s"Expiring connector to ${connector.target} after $connectorGc of inactivity")
         it.remove()
         connector.close()
@@ -146,8 +146,7 @@ class Client(
       }
     }
     connector.currentConnection match {
-      case Success(conn) =>
-      // pass
+      case Success(conn) => // pass
       case Failure(ex) =>
         val now = System.nanoTime()
         val delay = Duration(now - connector.creationTime, TimeUnit.NANOSECONDS)

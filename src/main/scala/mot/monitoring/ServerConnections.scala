@@ -23,7 +23,7 @@ class ServerConnections(context: Context) extends SimpleCommandHandler {
           printer(
             server.name,
             conn.remoteAddress.toString,
-            TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - conn.lastReception),
+            TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - conn.lastRead.get),
             conn.remoteNameOption.getOrElse("-"),
             conn.remoteMaxLength.getOrElse(-1))
         }

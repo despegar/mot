@@ -19,6 +19,7 @@ import mot.protocol.FlowControlFrame
 import mot.dump.TcpEvent
 import mot.dump.Direction
 import mot.dump.Operation
+import mot.util.Util.RichAtomicLong
 
 class ClientConnection(val connector: ClientConnector, socketImpl: Socket)
   extends AbstractConnection(connector.client, socketImpl) {
@@ -38,6 +39,7 @@ class ClientConnection(val connector: ClientConnector, socketImpl: Socket)
     party.context.dumper.dump(TcpEvent(this, Direction.Outgoing, Operation.Creation))
     readerThread.start()
     writerLoop()
+    // TODO: join reader?
   }
 
   def reportClose(cause: Throwable): Unit = {
@@ -60,7 +62,7 @@ class ClientConnection(val connector: ClientConnector, socketImpl: Socket)
       connector.pendingResponses.remove(response.reference) match {
         case res: PendingResponse =>
           res.fulfill(this, message)
-          connector.responsesReceivedCounter += 1
+          connector.responsesReceivedCounter.lazyIncrement() // valid because only one thread does this
         case null =>
           // unexpected response arrived (probably expired and then collected)
       }
@@ -82,11 +84,11 @@ class ClientConnection(val connector: ClientConnector, socketImpl: Socket)
     } else {
       pendingResponse match {
         case Some(pr) =>
-          connector.respondableSentCounter += 1
+          connector.respondableSentCounter.lazyIncrement() // valid because only one thread does this
           val frame = RequestFrame(pr.requestId, pr.flow.id, pr.timeoutMs, msg.attributes, msg.bodyLength, msg.bodyParts)
           writeFrame(frame)
         case None =>
-          connector.unrespondableSentCounter += 1
+          connector.unrespondableSentCounter.lazyIncrement() // valid because only one thread does this
           writeFrame(MessageFrame(msg.attributes, msg.bodyLength, msg.bodyParts))
       }
     }
@@ -103,7 +105,7 @@ class ClientConnection(val connector: ClientConnector, socketImpl: Socket)
       case Some(pr) => pr.error(this, exception)
       case None => logger.info(exception.getMessage)
     }
-    connector.triedToSendTooLargeMessage += 1
+    connector.triedToSendTooLargeMessage.lazyIncrement() // valid because only one thread does this
   }
 
 }

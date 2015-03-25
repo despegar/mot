@@ -4,6 +4,8 @@ import java.io.InputStream
 import java.io.EOFException
 import mot.util.Util
 import mot.util.ByteArray
+import java.util.concurrent.atomic.AtomicLong
+import mot.util.Util.RichAtomicLong
 
 /**
  * A buffer for reading bytes from an InputStream. At any time, the buffer is partitioned into three sections,
@@ -29,13 +31,13 @@ class ReadBuffer(val is: InputStream, val bufferSize: Int) {
   def hasFreeSpace() = bufferSize > highPosition
   def isCompressed() = lowPosition == 0
 
-  @volatile private var _readCount = 0L
-  @volatile private var _fullReadCount = 0L
-  @volatile private var _bytesCount = 0L
+  private val _readCount = new AtomicLong
+  private val _fullReadCount = new AtomicLong
+  private val _bytesCount = new AtomicLong
   
-  def readCount() = _readCount
-  def fullReadCount() = _fullReadCount
-  def bytesCount() = _bytesCount
+  def readCount() = _readCount.get
+  def fullReadCount() = _fullReadCount.get
+  def bytesCount() = _bytesCount.get
   
   private var processedCount = 0L
   private var processedMark = -1L
@@ -85,10 +87,10 @@ class ReadBuffer(val is: InputStream, val bufferSize: Int) {
     if (bytesRead == -1)
       throw new EOFException("EOF reading from input stream")
     highPosition += bytesRead
-    _bytesCount += bytesRead
-    _readCount += 1
+    _bytesCount.lazyAdd(bytesRead)
+    _readCount.lazyIncrement()
     if (!hasFreeSpace)
-      _fullReadCount += 1
+      _fullReadCount.lazyIncrement()
   }
 
   def getByteArray(length: Int): ByteArray = {

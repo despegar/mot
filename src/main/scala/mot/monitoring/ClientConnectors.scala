@@ -39,7 +39,7 @@ class ClientConnectors(context: Context) extends SimpleCommandHandler {
               ("-", "-", None, None, 0, ex.getMessage)
           }
           val now = System.nanoTime()
-          val idle = TimeUnit.NANOSECONDS.toSeconds(now - connector.lastUse)
+          val idle = TimeUnit.NANOSECONDS.toSeconds(now - connector.lastUse.get)
           printer(
             client.name,
             connector.target.toString,

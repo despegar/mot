@@ -11,6 +11,7 @@ import mot.ClientFlow
 import mot.IncomingResponse
 import mot.util.Util.FunctionToTimerTask
 import mot.Address
+import mot.util.Util.RichAtomicLong
 
 class PendingResponse(
   val promise: Promise[IncomingResponse],
@@ -33,7 +34,7 @@ class PendingResponse(
   private def timeout(): Unit = {
     val remoteAddress = connector.target // use unresolved address
     if (promise.tryComplete(IncomingResponse(remoteAddress, None, Failure(new ResponseTimeoutException), flow))) {
-      connector.timeoutsCounter += 1
+      connector.timeoutsCounter.lazyIncrement() // valid because only one thread expires
     }
     connector.pendingResponses.remove(requestId)
   }
