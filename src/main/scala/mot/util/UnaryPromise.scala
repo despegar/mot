@@ -8,7 +8,7 @@ import java.util.concurrent.TimeUnit
 /**
  * A kind of [[mot.util.Promise]] that can be completed only once.
  */
-class UnaryPromise[A] extends Promise[A] {
+final class UnaryPromise[A] extends Promise[A] {
 
   private val completionLatch = new CountDownLatch(1)
   private val _value = new AtomicReference[Option[A]](None) 

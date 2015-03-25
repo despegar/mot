@@ -9,7 +9,7 @@ import mot.impl.OutgoingResponse
  * 
  * @see [[mot.ClientFlow]]
  */
-class ServerFlow private[mot] (
+final class ServerFlow private[mot] (
     private val connection: ServerConnection, 
     val id: Int, 
     private [mot] val queue: LinkedBlockingMultiQueue[Int, OutgoingResponse]#SubQueue) {

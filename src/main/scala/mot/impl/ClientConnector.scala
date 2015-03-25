@@ -31,7 +31,7 @@ import java.util.concurrent.atomic.AtomicLong
  * Represents the link between the client and one server.
  * This connector will create connections and re-create them forever when they terminate with errors.
  */
-class ClientConnector(val client: Client, val target: Address) extends StrictLogging {
+final class ClientConnector(val client: Client, val target: Address) extends StrictLogging {
 
   val creationTime = System.nanoTime()
 

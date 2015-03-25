@@ -8,7 +8,7 @@ import mot.impl.OutgoingResponse
  * Instances of this class are created by server-side parties as handlers for responding messages. Each respondible
  * request has one distinct instance.
  */
-class Responder private[mot](
+final class Responder private[mot](
     private val connection: ServerConnection, 
     val requestId: Int, 
     val timeoutMs: Int,

@@ -25,7 +25,7 @@ import mot.InvalidConnectionException
 import mot.ServerFlow
 import mot.util.Util.RichAtomicLong
 
-class ServerConnection(val server: Server, socketImpl: Socket) extends AbstractConnection(server, socketImpl) {
+final class ServerConnection(val server: Server, socketImpl: Socket) extends AbstractConnection(server, socketImpl) {
 
   val responseFlows = new ServerFlows(this)
 

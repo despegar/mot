@@ -14,7 +14,7 @@ import mot.util.Util.RichAtomicLong
  * Pending bytes were read from the InputStream and not passed to the application.
  * Free space at the end of the buffer is not occupied by useful bytes, new read from the InputStream go here.  
  */
-class ReadBuffer(val is: InputStream, val bufferSize: Int) {
+final class ReadBuffer(val is: InputStream, val bufferSize: Int) {
 
   import ReadBuffer._
   

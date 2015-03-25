@@ -20,7 +20,7 @@ import mot.util.ByteArray
  *   message from various parts without having the copy to one contiguous array. The incoming messages always have one 
  *   part. 
  */
-class Message private[mot] (
+final class Message private[mot] (
   val attributes: Seq[(String, ByteArray)] = Nil,
   val bodyLength: Int,
   val bodyParts: Seq[ByteArray] = Nil) {

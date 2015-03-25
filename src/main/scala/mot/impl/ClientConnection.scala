@@ -21,7 +21,7 @@ import mot.dump.Direction
 import mot.dump.Operation
 import mot.util.Util.RichAtomicLong
 
-class ClientConnection(val connector: ClientConnector, socketImpl: Socket)
+final class ClientConnection(val connector: ClientConnector, socketImpl: Socket)
   extends AbstractConnection(connector.client, socketImpl) {
 
   val readerThread = new Thread(readerLoop _, s"mot(${connector.client.name})-reader-for-${connector.target}")

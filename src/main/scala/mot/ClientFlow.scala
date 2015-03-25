@@ -31,7 +31,7 @@ import com.typesafe.scalalogging.slf4j.StrictLogging
  *
  * @see [[mot.protocol.FlowControlFrame]]  
  */
-class ClientFlow private[mot](val id: Int, val client: Client) extends StrictLogging {
+final class ClientFlow private[mot](val id: Int, val client: Client) extends StrictLogging {
 
   private val status = new AtomicBoolean(true) // flows start open
 

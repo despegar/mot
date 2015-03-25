@@ -6,7 +6,7 @@ import java.net.SocketException
 import mot.Address
 import java.net.InetSocketAddress
 
-class RichSocket(val impl: Socket) {
+final class RichSocket(val impl: Socket) {
 
   private val closed = new AtomicBoolean
 

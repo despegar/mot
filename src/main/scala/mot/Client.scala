@@ -71,7 +71,7 @@ import mot.util.Util.FunctionToRunnable
  * @define enqueingTimeoutUnit 
  *   Unit of the enqueingTimeout
  */
-class Client(
+final class Client(
   val context: Context,
   val name: String,
   val maxLength: Int = 100000,

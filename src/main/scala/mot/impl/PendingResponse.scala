@@ -13,7 +13,7 @@ import mot.util.Util.FunctionToTimerTask
 import mot.Address
 import mot.util.Util.RichAtomicLong
 
-class PendingResponse(
+final class PendingResponse(
   val promise: Promise[IncomingResponse],
   val timeoutMs: Int,
   val connector: ClientConnector,

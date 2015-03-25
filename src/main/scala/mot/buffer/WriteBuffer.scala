@@ -5,7 +5,7 @@ import mot.util.ByteArray
 import java.util.concurrent.atomic.AtomicLong
 import mot.util.Util.RichAtomicLong
 
-class WriteBuffer(val os: OutputStream, val bufferSize: Int) {
+final class WriteBuffer(val os: OutputStream, val bufferSize: Int) {
 
   import WriteBuffer._
   

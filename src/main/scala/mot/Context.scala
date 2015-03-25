@@ -12,7 +12,7 @@ import scala.collection.JavaConversions._
  * @param dumpPort Port to bind the monitoring socket that the 'motdump' utility uses.
  * @param uncaughtErrorHandler Handler for unexpected error (bugs).
  */
-class Context(
+final class Context(
     val monitoringPort: Int = 6101, 
     val dumpPort: Int = 6001,
     val uncaughtErrorHandler: UncaughtErrorHandler = LoggingErrorHandler) {

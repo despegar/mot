@@ -29,7 +29,7 @@ case class Listener(bufferSize: Int) {
   val overflows = new AtomicLong
 }
 
-class Dumper(dumperPort: Int) extends StrictLogging {
+final class Dumper(dumperPort: Int) extends StrictLogging {
 
   def dump(event: Event): Unit = {
     // Optimize the very common case of no listeners

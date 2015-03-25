@@ -49,7 +49,7 @@ import mot.util.Util.closeSocket
  * @param writeBufferSize
  *   Size (in bytes) of the writer buffer
  */
-class Server(
+final class Server(
   val context: Context,
   val name: String,
   val executor: Executor,
