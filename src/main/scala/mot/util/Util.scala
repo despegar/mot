@@ -14,7 +14,7 @@ import scala.concurrent.duration.Duration.Infinite
 
 object Util {
 
-  implicit class CeilingDivider(val n: Long) extends AnyVal {
+  implicit final class CeilingDivider(val n: Long) extends AnyVal {
     def /^(d: Long) = (n + d - 1) / d
   }
   
@@ -26,19 +26,19 @@ object Util {
   val bytes31 = 4
   val bytes32 = 4
   
-  implicit class FunctionToRunnable(f: () => Unit) extends Runnable {
+  implicit final class FunctionToRunnable(f: () => Unit) extends Runnable {
     def run() = f()
   }
   
-  implicit class FunctionToTimerTask(f: () => Unit) extends TimerTask {
+  implicit final class FunctionToTimerTask(f: () => Unit) extends TimerTask {
     def run(t: Timeout) = f()
   }
   
-  implicit class ByteToBoolean(val i: Byte) extends AnyVal {
+  implicit final class ByteToBoolean(val i: Byte) extends AnyVal {
     def toBoolean = i != 0
   }
 
-  implicit class BooleanToByte(val b: Boolean) extends AnyVal {
+  implicit final class BooleanToByte(val b: Boolean) extends AnyVal {
     def toByte: Byte = if (b) 1 else 0
   }
   
