@@ -1,0 +1,1 @@
+Monch is a Rust program. It can be compiled using 'cargo build --release'. A precompiled version for Linux (depending on libc 2.15) is located in the parent directory.

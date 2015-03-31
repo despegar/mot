@@ -1,0 +1,11 @@
+[package]
+name = "monch"
+version = "0.0.1"
+
+[[bin]]
+name = "monch"
+
+[dependencies]
+getopts = "0.2.6"
+env_logger = "0.3.0"
+time = "0.1.22"

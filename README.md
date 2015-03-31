@@ -98,7 +98,16 @@ There are two monitoring tools available. Both work through TCP connections to t
 
 [motdump](motdump) is a command-line application that dumps the frames as they are received or transmitted, much like as tcpdump does with the protocol segments. It offers a full set of filters that allow the command to be useful even in high-traffic environments.
 
-Murl
-----
+Tools
+-----
 
-A frequent reason to keep using legacy protocols is simply that useful tools do exist. In order to make the testing of Mot servers more convenient, a simple command-line application is provided. [Murl](murl) (short for "Mot Curl") implements the client-side Mot functionality and allows to use the protocol from the command line.
+A frequent reason to keep using legacy protocols is simply that useful tools do exist. In order to make the testing of Mot servers more convenient, simple command-line application are provided. 
+
+### murl
+
+[Murl](murl) (short for "Mot Curl") implements the client-side Mot functionality and allows to use the protocol from the command line.
+
+### monch
+
+[Monch](monch-project) (short for "MOt BeNCHmark") implements a simple benchmarking utility, inspired in the Apache Bench (ab) tool.
+
