@@ -38,8 +38,8 @@ final class ClientConnection(val connector: ClientConnector, socketImpl: Socket)
   def startAndBlockWriting(): Unit = {
     party.context.dumper.dump(TcpEvent(this, Direction.Outgoing, Operation.Creation))
     readerThread.start()
-    writerLoop()
-    // TODO: join reader?
+    writerLoop() // block for the duration of the connection
+    readerThread.join() // the writer signals the reader to finish, so this should not take much time
   }
 
   def reportClose(cause: Throwable): Unit = {
