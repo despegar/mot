@@ -105,9 +105,9 @@ A frequent reason to keep using legacy protocols is simply that useful tools do 
 
 ### murl
 
-[Murl](murl) (short for "Mot Curl") implements the client-side Mot functionality and allows to use the protocol from the command line.
+[murl](murl) (short for "Mot Curl") implements the client-side Mot functionality and allows to use the protocol from the command line.
 
 ### monch
 
-[Monch](monch-project) (short for "MOt BeNCHmark") implements a simple benchmarking utility, inspired in the Apache Bench (ab) tool.
+[monch](monch-project) (short for "MOt BeNCHmark") implements a simple benchmarking utility, inspired in the Apache Bench (ab) tool.
 
