@@ -12,7 +12,6 @@ import java.io.PrintStream
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.LinkedBlockingQueue
 import scala.collection.JavaConversions._
-import java.nio.charset.StandardCharsets
 import java.text.SimpleDateFormat
 import java.util.TimeZone
 import java.util.concurrent.atomic.AtomicLong
@@ -23,6 +22,7 @@ import java.nio.charset.StandardCharsets.UTF_8
 import java.util.concurrent.TimeUnit
 import mot.impl.Connection
 import mot.util.Util
+import java.net.InetAddress
 
 case class Listener(bufferSize: Int) {
   val queue = new LinkedBlockingQueue[Event](bufferSize)
@@ -52,8 +52,7 @@ final class Dumper(dumperPort: Int) extends StrictLogging {
   @volatile var closed = false
 
   def start() = {
-    // TODO: Make binding configurable
-    serverSocket.bind(new InetSocketAddress("127.0.0.1", dumperPort))
+    serverSocket.bind(new InetSocketAddress(InetAddress.getByName(null) /* loopback interface */, dumperPort))
     acceptorThread.start()
   }
 
@@ -89,7 +88,6 @@ final class Dumper(dumperPort: Int) extends StrictLogging {
   class ArgumentError(msg: String) extends Exception(msg)
 
   def processClient(socket: Socket) = {
-    import StandardCharsets.UTF_8
     socket.setSoTimeout(100) // localhost should be fast
     val is = socket.getInputStream
     val os = socket.getOutputStream

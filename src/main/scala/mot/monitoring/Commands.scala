@@ -13,14 +13,14 @@ import com.typesafe.scalalogging.slf4j.StrictLogging
 import java.nio.charset.StandardCharsets
 import mot.util.Util
 import java.io.IOException
+import java.net.InetAddress
 
 class Commands(context: Context, monitoringPort: Int) extends StrictLogging with MultiCommandHandler {
 
   val serverSocket = new ServerSocket()
 
   def start() = {
-    // TODO: Make binding configurable
-    serverSocket.bind(new InetSocketAddress("127.0.0.1", monitoringPort))
+    serverSocket.bind(new InetSocketAddress(InetAddress.getByName(null) /* loopback interface */, monitoringPort))
     acceptorThread.start()
   }
   
