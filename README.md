@@ -86,7 +86,7 @@ API
 Monitoring
 ----------
 
-Monitoring was an essential design consideration in the implementation. While this is an important feature in general, it is more important in this case, as Mot uses a binary protocol, and also because of the connection model (a single TCP connection can transport unrelated data). These circumstances can make the typical inspection using tcpdump or netstat somewhat inconvenient.
+While monitoring is an important feature in general, it is more important in this case, as Mot uses a binary protocol, and also because of the connection model (a single TCP connection can transport unrelated data). These circumstances can make the typical inspection using tcpdump or netstat somewhat inconvenient.
 
 There are two monitoring tools available. Both work through TCP connections to the loopback interface:
 
