@@ -1,6 +1,6 @@
 organization := "com.github.marianobarrios"
 name := "mot"
-version := "0.8-SNAPSHOT"
+version := "0.8.0"
 description := "Message-Oriented Transport"
 homepage := Some(url("https://github.com/marianobarrios/mot"))
 licenses := Seq("BSD-style" -> url("http://www.opensource.org/licenses/bsd-license.php"))
