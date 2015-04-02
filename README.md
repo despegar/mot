@@ -109,5 +109,5 @@ A frequent reason to keep using legacy protocols is simply that useful tools do 
 
 ### monch
 
-[monch](monch-project) (short for "MOt BeNCHmark") implements a simple benchmarking utility, inspired in the Apache Bench (ab) tool.
+[monch](monch-project) (short for "MOt BeNCHmark") is a simple benchmarking utility, inspired in the Apache Bench (ab) tool.
 
