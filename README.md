@@ -33,6 +33,8 @@ Other approaches
 
 * [Stream Control Transmission Protocol](http://tools.ietf.org/html/rfc4960) (SCTP) -- a transport-layer protocol to replace TCP, which provides multiplexed streams and stream-aware congestion control. SCTP solves the "idle connection" problem and also provides message delimitation. It does not provide, however, the mapping of requests to responses, which should be done at the application level. In spite of that, SCTP could be a good fit as a transport for Mot.
 
+* [Websockets](https://tools.ietf.org/html/rfc6455) -- a procotol which also offers message delimitation (yet not request-response asociation) that was specially engineered to share the TCP port with HTTP and (to some degree) go through intermediaries that expect HTTP traffic.
+
 Mot's approach
 --------------
 
