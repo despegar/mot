@@ -18,7 +18,7 @@ Perhaps because of its universal deployment in the Internet and abundant and pro
 
 * Messy relation between the protocol and its transport. Originally, HTTP did not do any provision for reusing connections. Although in HTTP 1.1 connections are reused by default, some problems remain, as servers can (and do) unilaterally close connections. The Apache Web Server, for example, [closes idle connections after only 5 seconds](https://httpd.apache.org/docs/2.4/mod/core.html#keepalivetimeout).
 
-* Streaming complexity. There are three distinct modes of "transfer encodings" for request and response bodies.
+* Streaming variety. There are three distinct modes of "transfer encodings" for request and response bodies (i.e., identity, chunked and length-delimited). This is specially inconvenient to proxy servers, which must be able to proxy 9 different streaming combinations.
 
 * General complexity. It is perhaps not widely known that implementing HTTP correctly can be difficult. The protocol has evolved for a long time and has some exotic features that must be supported, at least partially, such as pipelining or "trailers" in chunked transfer encoding.
 
