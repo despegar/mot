@@ -1,7 +1,7 @@
 Message-Oriented Transport
 ==========================
 
-The Message-Oriented Transport (Mot) is an experiment to speed and simplify communications inside the data center, adding delimitation and request-response association to TCP streams. Mot is an application-layer general-purpose protocol (and implementation) for transporting independent and relatively small messages (and potentially their responses).
+The Message-Oriented Transport (Mot) is an experiment to speed and simplify communications inside the data center, adding frame delimitation and request-response association to TCP streams. Mot is an application-layer general-purpose protocol (and implementation) for transporting independent and relatively small messages (and potentially their responses).
 
 Introduction
 ------------
