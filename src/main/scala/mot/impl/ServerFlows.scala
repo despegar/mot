@@ -1,6 +1,6 @@
 package mot.impl
 
-import mot.queue.LinkedBlockingMultiQueue
+import lbmq.LinkedBlockingMultiQueue
 import scala.concurrent.duration.Duration
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.ConcurrentHashMap
@@ -11,22 +11,28 @@ import mot.ServerFlow
 
 final class ServerFlows(connection: ServerConnection) extends StrictLogging {
 
-  val multiQueue = new LinkedBlockingMultiQueue[Int, OutgoingResponse](connection.server.maxQueueSize)
+  val multiQueue = new LinkedBlockingMultiQueue[Int, OutgoingResponse]
   val flows = new ConcurrentHashMap[Int, ServerFlow]
 
   def totalSize() = multiQueue.totalSize
 
   def getOrCreateFlow(flowId: Int): ServerFlow = synchronized {
-    val (subQueue, created) = multiQueue.getOrCreateSubQueue(flowId)
-    if (created) {
-      val newFlow = new ServerFlow(connection, flowId, subQueue)
-      flows.put(flowId, newFlow)
-      newFlow
-    } else {
-      val flow = flows.get(flowId)
-      flow.markUse()
-      flow
+    var flow = flows.get(flowId)
+    if (flow == null) {
+      val newFlow = new ServerFlow(connection, flowId)
+      val existent = flows.putIfAbsent(flowId, newFlow)
+      if (existent == null) {
+        val old = multiQueue.addSubQueue(flowId, 1, connection.server.maxQueueSize)
+        assert(old == null) // concurrent map should force no flow is created twice
+        newFlow.queue = multiQueue.getSubQueue(flowId)
+        flow = newFlow
+      } else {
+        // lost race
+        flow = existent
+      }
     }
+    flow.markUse()
+    flow
   }
 
   def flow(flowId: Int) = Option(flows.get(flowId))

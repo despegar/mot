@@ -23,7 +23,7 @@ import mot.Message
 import mot.dump.Direction
 import mot.dump.Operation
 import mot.dump.TcpEvent
-import mot.queue.LinkedBlockingMultiQueue
+import lbmq.LinkedBlockingMultiQueue
 import mot.util.Util.FunctionToRunnable
 import java.util.concurrent.atomic.AtomicLong
 
@@ -37,8 +37,17 @@ final class ClientConnector(val client: Client, val target: Address) extends Str
 
   val sendingQueue = new LinkedBlockingMultiQueue[String, OutgoingEvent]
 
-  val messagesQueue = sendingQueue.addSubQueue("messages", capacity = client.maxQueueSize, priority = 100)
-  val flowControlQueue = sendingQueue.addSubQueue("flow-control", capacity = 5, priority = 10)
+  val messagesQueue = {
+    val key = "messages"
+    sendingQueue.addSubQueue(key, 100 /* priority */, client.maxQueueSize /* capacity */)
+    sendingQueue.getSubQueue(key)
+  }
+  
+  val flowControlQueue = {
+    val key = "flow-control"
+    sendingQueue.addSubQueue("flow-control", 10 /* priority */, 5 /* capacity */)
+    sendingQueue.getSubQueue(key)
+  }
 
   val writerThread = new Thread(connectLoop _, s"mot(${client.name})-writer-for-$target")
 

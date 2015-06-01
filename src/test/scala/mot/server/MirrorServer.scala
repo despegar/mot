@@ -21,7 +21,7 @@ object MirrorServer extends StrictLogging {
   def main(args: Array[String]): Unit = {
     val ctx = new Context(monitoringPort = args(0).toInt, dumpPort = args(1).toInt)
     val executor = new ThreadPoolExecutor(
-        2, 2, 0L, TimeUnit.SECONDS, new LinkedBlockingQueue[Runnable](1000), new ThreadPoolExecutor.CallerRunsPolicy)
+        4, 4, 0L, TimeUnit.SECONDS, new SynchronousQueue[Runnable], new ThreadPoolExecutor.CallerRunsPolicy)
     val server = new Server(
       ctx,
       "test-server",

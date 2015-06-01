@@ -31,6 +31,7 @@ scalacOptions := Seq(
 	
 libraryDependencies ++=
   "com.typesafe.scala-logging" %% "scala-logging-slf4j" % "2.1.2" ::
+  "com.github.marianobarrios" % "lbmq" % "0.2.0" ::
   "ch.qos.logback" % "logback-classic" % "1.1.3" % Test ::
   "io.netty" % "netty-common" % "4.0.26.Final" ::
   "org.scalatest" %% "scalatest" % "2.2.4" % "test" ::

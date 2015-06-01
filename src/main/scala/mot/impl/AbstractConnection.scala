@@ -27,10 +27,11 @@ import mot.protocol.ProtocolException
 import mot.protocol.ProtocolSemanticException
 import mot.protocol.ResetFrame
 import mot.protocol.UnknownFrame
-import mot.queue.Pollable
+import lbmq.Pollable
 import mot.util.RichSocket
 import mot.util.NoStackTraceException
 import java.util.concurrent.atomic.AtomicLong
+import lbmq.LinkedBlockingMultiQueue
 
 abstract class AbstractConnection(val party: MotParty, val socketImpl: Socket) extends Connection with StrictLogging {
 
@@ -38,7 +39,7 @@ abstract class AbstractConnection(val party: MotParty, val socketImpl: Socket) e
 
   def localHello: HelloMessage
   def remoteHelloLatch: CountDownLatch
-  def outgoingQueue: Pollable[OutgoingEvent]
+  def outgoingQueue: LinkedBlockingMultiQueue[_ <: Any, _ <: OutgoingEvent]
 
   // Processing callbacks
   def processOutgoing(e: OutgoingEvent): Unit
@@ -113,12 +114,12 @@ abstract class AbstractConnection(val party: MotParty, val socketImpl: Socket) e
         if (!wait(remoteHelloLatch, stop = isClosing _))
           throw new GreetingAbortedException
         while (!isClosing) {
-          outgoingQueue.pollWithRemaining(pollingTimeoutNs, TimeUnit.NANOSECONDS) match {
-            case (event: OutgoingEvent, remaining) =>
+          outgoingQueue.poll(pollingTimeoutNs, TimeUnit.NANOSECONDS) match {
+            case event: OutgoingEvent =>
               processOutgoing(event)
-              if (remaining == 0 || System.nanoTime() - writeBuffer.lastFlush > maxBufferingTimeNs)
+              if (outgoingQueue.isEmpty || System.nanoTime() - writeBuffer.lastFlush > maxBufferingTimeNs)
                 writeBuffer.flush()
-            case (null, _) =>
+            case null =>
               /*
                * The purpose of heart beats is to keep the wire active where there are no messages.
                * This is useful for detecting dropped connections and avoiding read timeouts in the other side.

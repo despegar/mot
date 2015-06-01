@@ -10,13 +10,20 @@ Communications inside the data center are almost universally done using the Tran
 
 Perhaps because of its universal deployment in the Internet and abundant and prolific tooling community, the Hypertext Transfer Protocol (HTTP) is commonly used as a transport inside the data center. This has some drawbacks:
 
-* Single request per connection. Because HTTP can only send one message at a time (pipelining might help, but still enforces only a FIFO queue), any server delay prevents reuse of the TCP channel for additional requests. This problem is usually worked around by the use of multiple connections, which in turn must be pooled to avoid the overhead of creation. Moreover, as HTTP is actually half-duplex (the response cannot be sent before the request is completely received) the TCP channel is never fully used.
+* Single request per connection. Because HTTP can only send one message at a time (pipelining might help, but still
+* enforces only a FIFO queue), any server delay prevents reuse of the TCP channel for additional requests. This problem
+* is usually worked around by the use of multiple connections, which in turn must be pooled to avoid the overhead of
+* creation. Moreover, as HTTP is actually half-duplex (the response cannot be sent before the request is completely
+* received) the TCP channel is never fully used.
 
 * Text based request and response headers. Reducing the data in headers could directly improve the latency.
 
 * Redundant headers. Several headers are repeatedly sent across requests on the same channel. However, headers such as the User-Agent, Host, and Accept* are generally static and do not need to be resent.
 
-* Messy relation between the protocol and its transport. Originally, HTTP did not do any provision for reusing connections. Although in HTTP 1.1 connections are reused by default, some problems remain, as servers can (and do) unilaterally close connections. The Apache Web Server, for example, [closes idle connections after only 5 seconds](https://httpd.apache.org/docs/2.4/mod/core.html#keepalivetimeout).
+* Messy relation between the protocol and its transport. Originally, HTTP did not do any provision for reusing
+* connections. Although in HTTP 1.1 connections are reused by default, some problems remain, as servers can (and do)
+* unilaterally close connections. The Apache Web Server, for example, [closes idle connections after only 5
+* seconds](https://httpd.apache.org/docs/2.4/mod/core.html#keepalivetimeout).
 
 * Streaming variety. There are three distinct modes of "transfer encodings" for request and response bodies (i.e., identity, chunked and length-delimited). This is specially inconvenient to proxy servers, which must be able to proxy 9 different streaming combinations.
 
@@ -76,7 +83,7 @@ Netty's implementation of the hashed wheel timer is used to keep track of reques
 
 As it is commonly done with HTTP and other protocols, when the target is specified using a domain name (not an IP address), the implementation will try to establish a connection with all the A and AAAA records associated with the name, until one eventually succeeds.
 
-With respect to concurrency, all the interface is thread-safe. In particular, messages and responses can be sent by several threads safely. Internally, the access to TCP connections is serialized using concurrent queues. There is one queue per each connection side (each pair of distinct Mot parties uses one queue for sending messages from their side). The queue used is a variant of the [LinkedBlockingQueue](http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/LinkedBlockingQueue.html) that manages priorities and supports sub-queues. It is called [LinkedBlockingMultiQueue](src/main/scala/mot/queue/LinkedBlockingMultiQueue.scala).
+With respect to concurrency, all the interface is thread-safe. In particular, messages and responses can be sent by several threads safely. Internally, the access to TCP connections is serialized using concurrent queues. There is one queue per each connection side (each pair of distinct Mot parties uses one queue for sending messages from their side). The queue used is the [LinkedBlockingMultiQueue](https://github.com/marianobarrios/linked-blocking-multi-queue), which is a variant of the [LinkedBlockingQueue](http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/LinkedBlockingQueue.html) that manages priorities and supports sub-queues.
 
 Regarding performance, a single client-server pair can easily reach a throughput in the order of hundreds of thousands of request-response round-trips, using two quad-core instances. The latency in idle hardware of a request-response round-trip is in the order of the single millisecond.
 
