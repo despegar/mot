@@ -1,33 +1,42 @@
 Message-Oriented Transport
 ==========================
 
-The Message-Oriented Transport (Mot) is an experiment to speed and simplify communications inside the data center, adding frame delimitation and request-response association to TCP streams. Mot is an application-layer general-purpose protocol (and implementation) for transporting independent and relatively small messages (and potentially their responses).
+The Message-Oriented Transport (Mot) is an experiment to speed and simplify communications inside the data center, adding frame
+delimitation and request-response association to TCP streams. Mot is an application-layer general-purpose protocol (and
+implementation) for transporting independent and relatively small messages (and potentially their responses).
 
 Introduction
 ------------
 
-Communications inside the data center are almost universally done using the Transmission Control Protocol (TCP). As TCP provides a bidirectional, unstructured stream, usually something must be added at the application level to delimit "messages", associate responses to requests and provide some form of typing.
+Communications inside the data center are almost universally done using the Transmission Control Protocol (TCP). As TCP provides a
+bidirectional, unstructured stream, usually something must be added at the application level to delimit "messages", associate
+responses to requests and provide some form of typing.
 
-Perhaps because of its universal deployment in the Internet and abundant and prolific tooling community, the Hypertext Transfer Protocol (HTTP) is commonly used as a transport inside the data center. This has some drawbacks:
+Perhaps because of its universal deployment in the Internet and abundant and prolific tooling community, the Hypertext Transfer
+Protocol (HTTP) is commonly used as a transport inside the data center. This has some drawbacks:
 
-* Single request per connection. Because HTTP can only send one message at a time (pipelining might help, but still
-* enforces only a FIFO queue), any server delay prevents reuse of the TCP channel for additional requests. This problem
-* is usually worked around by the use of multiple connections, which in turn must be pooled to avoid the overhead of
-* creation. Moreover, as HTTP is actually half-duplex (the response cannot be sent before the request is completely
-* received) the TCP channel is never fully used.
+* Single request per connection. Because HTTP can only send one message at a time (pipelining might help, but still enforces only a
+FIFO queue), any server delay prevents reuse of the TCP channel for additional requests. This problem is usually worked around by
+the use of multiple connections, which in turn must be pooled to avoid the overhead of creation. Moreover, as HTTP is actually half
+duplex (the response cannot be sent before the request is completely received) the TCP channel is never fully used.
 
 * Text based request and response headers. Reducing the data in headers could directly improve the latency.
 
-* Redundant headers. Several headers are repeatedly sent across requests on the same channel. However, headers such as the User-Agent, Host, and Accept* are generally static and do not need to be resent.
+* Redundant headers. Several headers are repeatedly sent across requests on the same channel. However, headers such as the 
+User-Agent, Host, and Accept* are generally static and do not need to be resent.
 
-* Messy relation between the protocol and its transport. Originally, HTTP did not do any provision for reusing
-* connections. Although in HTTP 1.1 connections are reused by default, some problems remain, as servers can (and do)
-* unilaterally close connections. The Apache Web Server, for example, [closes idle connections after only 5
-* seconds](https://httpd.apache.org/docs/2.4/mod/core.html#keepalivetimeout).
+* Messy relation between the protocol and its transport. Originally, HTTP did not do any provision for reusing connections. Although
+in HTTP 1.1 connections are reused by default, some problems remain, as servers can (and do) unilaterally close connections. The
+Apache Web Server, for example, [closes idle connections after only 5 seconds](https://httpd.apache.org/docs/2.4/mod/core
+html#keepalivetimeout).
 
-* Streaming variety. There are three distinct modes of "transfer encodings" for request and response bodies (i.e., identity, chunked and length-delimited). This is specially inconvenient to proxy servers, which must be able to proxy 9 different streaming combinations.
+* Streaming variety. There are three distinct modes of "transfer encodings" for request and response bodies (i.e., identity, chunked
+and length-delimited). This is specially inconvenient to proxy servers, which must be able to proxy 9 different streaming
+combinations.
 
-* General complexity. It is perhaps not widely known that implementing HTTP correctly can be difficult. The protocol has evolved for a long time and has some exotic features that must be supported, at least partially, such as pipelining or "trailers" in chunked transfer encoding.
+* General complexity. It is perhaps not widely known that implementing HTTP correctly can be difficult. The protocol has evolved for
+a long time and has some exotic features that must be supported, at least partially, such as pipelining or "trailers" in chunked
+transfer encoding.
 
 Other approaches
 ----------------
