@@ -16,7 +16,7 @@ final class ServerFlows(connection: ServerConnection) extends StrictLogging {
 
   def totalSize() = multiQueue.totalSize
 
-  def getOrCreateFlow(flowId: Int): ServerFlow = synchronized {
+  def getOrCreateFlow(flowId: Int): ServerFlow = {
     var flow = flows.get(flowId)
     if (flow == null) {
       val newFlow = new ServerFlow(connection, flowId)
