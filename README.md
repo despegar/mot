@@ -58,11 +58,11 @@ There are two types of things that can be sent over Mot: "messages", which are n
 
 As HTTP actually hijacks a TCP connection during the request-response cycle, it is in practice free to stream requests or responses -- the connection would have been idle otherwise. Assuming that messages are small enough to be kept in memory, the request-response pattern can be implemented using only one connection per pair of participating processes. Taking advantage of that design restriction, Mot maintains just one connection regardless of the number of pending responses. Connections are initiated by clients and maintained until an idle period expires. Connections that fail in any way are automatically re-established if needed. This re-establishment policy also makes the protocol multi-homed.
 
-A key feature of Mot is that the only mapping it provides is between requests and responses. Clients and servers cannot "dialog", at least not at the protocol level. Obviously they can do that in the upper layers, just like cookies implement a session over HTTP, which is a stateless protocol. This makes the protocol, as HTTP, a good fit for load balancing.
+A key feature of Mot is that the only mapping it provides is between requests and responses. Clients and servers cannot "dialog", at least not at the protocol level. They can, of course, implement it in the upper layers, just like cookies create a session over HTTP, which is a stateless protocol. This makes the protocol, as HTTP, a good fit for load balancing.
 
 Messages and requests can be send intermixed between the same parties. They share the same structure on the wire, the difference being that requests leave information (and a timer) in the client, to map the response when it arrives (or report the timeout if it does not).
 
-Keeping messages relatively small (the actual size is actually configurable) also prevents head-of-line blocking from being an issue. It also simplifies flow control significantly.
+Keeping messages relatively small (the actual size is actually configurable) also prevents head-of-line blocking from being an issue. It also simplifies flow control significantly. The general design of the protocol strives for maximum simplicity, in an effort to make it suitable when the alternatives result in poor performance or excessively complex implementation libraries.
 
 Messages
 --------
